@@ -304,24 +304,37 @@
 
           const loadSettings = async () => {
   try {
+    console.log('=== LOADING SETTINGS ===');
+    
     // Check if user is logged in
     const storedUser = localStorage.getItem('currentUser');
+    console.log('Stored user from localStorage:', storedUser);
+    
     if (!storedUser) {
+      console.log('No user found in localStorage');
       setLoading(false);
       setShowLogin(true);
       return;
     }
 
     const user = JSON.parse(storedUser);
+    console.log('Parsed user:', user);
+    console.log('User ID:', user.id);
+    
     setCurrentUser(user);
     setIsAdmin(user.is_admin || false);
     setShowLogin(false);
 
+    // Load user settings
+    console.log('Fetching user settings for user_id:', user.id);
     const { data: settings, error: settingsError } = await supabaseClient
       .from('user_settings')
       .select('*')
       .eq('user_id', user.id)
       .single();
+
+    console.log('Settings result:', settings);
+    console.log('Settings error:', settingsError);
 
     if (settings && !settingsError) {
       setSelectedCity(settings.selected_city || '');
@@ -330,32 +343,42 @@
       setSetupComplete(!!settings.selected_city && !!settings.selected_neighborhood);
     }
 
+    // Load tasks
+    console.log('Fetching tasks for user_id:', user.id);
     const { data: tasksData, error: tasksError } = await supabaseClient
       .from('tasks')
       .select('*')
       .eq('user_id', user.id);
 
+    console.log('Tasks result:', tasksData);
+    console.log('Tasks count:', tasksData ? tasksData.length : 0);
+    console.log('Tasks error:', tasksError);
+
     if (tasksData && !tasksError) {
-      const formattedTasks = tasksData.map(task => ({
-        id: task.id,
-        title: task.title,
-        type: task.type,
-        startTime: task.start_time || '',
-        endTime: task.end_time || '',
-        prayerReference: task.prayer_reference || 'Fajr',
-        offsetMinutes: task.offset_minutes || 0,
-        duration: task.duration || 60,
-        endType: task.end_type || 'duration',
-        endPrayer: task.end_prayer || 'Sunrise',
-        endOffsetMinutes: task.end_offset_minutes || 0,
-        fixedEndTime: task.fixed_end_time || '',
-        color: task.color,
-        days: task.days || [true, true, true, true, true, true, true],
-        hasMovingEnd: task.has_moving_end || false,
-        isOneTime: task.is_one_time || false,
-        oneTimeDate: task.one_time_date || '',
-        repeatInterval: task.repeat_interval || 1
-      }));
+      const formattedTasks = tasksData.map(task => {
+        console.log('Formatting task:', task);
+        return {
+          id: task.id,
+          title: task.title,
+          type: task.type,
+          startTime: task.start_time || '',
+          endTime: task.end_time || '',
+          prayerReference: task.prayer_reference || 'Fajr',
+          offsetMinutes: task.offset_minutes || 0,
+          duration: task.duration || 60,
+          endType: task.end_type || 'duration',
+          endPrayer: task.end_prayer || 'Sunrise',
+          endOffsetMinutes: task.end_offset_minutes || 0,
+          fixedEndTime: task.fixed_end_time || '',
+          color: task.color,
+          days: task.days || [true, true, true, true, true, true, true],
+          hasMovingEnd: task.has_moving_end || false,
+          isOneTime: task.is_one_time || false,
+          oneTimeDate: task.one_time_date || '',
+          repeatInterval: task.repeat_interval || 1
+        };
+      });
+      console.log('Formatted tasks:', formattedTasks);
       setTasks(formattedTasks);
     }
   } catch (error) {
@@ -761,6 +784,11 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
 
           const handleAddTask = async () => {
   try {
+    if (!currentUser || !currentUser.id) {
+      alert('User not logged in properly. Please refresh and login again.');
+      return;
+    }
+
     if (!newTask.title || !newTask.title.trim()) {
       alert('Please enter a task title');
       return;
@@ -777,7 +805,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
     }
 
     const taskData = {
-      user_id: 'default_user',
+      user_id: currentUser.id,
       title: newTask.title.trim(),
       type: newTask.type,
       color: newTask.color || COLORS[0],
@@ -804,26 +832,31 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
     if (newTask.isOneTime !== undefined) taskData.is_one_time = newTask.isOneTime;
     if (newTask.oneTimeDate) taskData.one_time_date = newTask.oneTimeDate;
 
+    console.log('Saving task with user_id:', currentUser.id);
+    console.log('Task data:', taskData);
+
     const { data, error } = await supabaseClient
       .from('tasks')
       .insert([taskData])
       .select();
 
     if (error) {
-      console.error('Supabase error details:', error);
-      alert(`Failed to save task: ${error.message || 'Unknown error'}`);
+      console.error('Supabase error:', error);
+      alert(`Failed to save task: ${error.message}`);
       return;
     }
 
     if (data && data[0]) {
+      console.log('Task saved successfully:', data[0]);
       const taskToAdd = { ...newTask, id: data[0].id };
       setTasks([...tasks, taskToAdd]);
       setNewTask({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1 });
       setShowAddTask(false);
+      alert('Task saved successfully!');
     }
   } catch (error) {
-    console.error('Unexpected error adding task:', error);
-    alert(`Failed to save task: ${error.message || 'Unexpected error'}`);
+    console.error('Unexpected error:', error);
+    alert(`Failed to save task: ${error.message}`);
   }
 };
 
@@ -856,7 +889,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
     }
 
     const taskData = {
-      user_id: 'default_user',
+      user_id: currentUser.id,
       title: newTask.title.trim(),
       type: newTask.type,
       color: newTask.color || COLORS[0],
