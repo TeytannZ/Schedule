@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Scheduler</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .task-card { transition: all 0.2s; }
+        .task-card:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const createClient = supabase.createClient;
+
+        const supabaseUrl = 'https://ehaghhevaxzorykybaso.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoYWdoaGV2YXh6b3J5a3liYXNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MTY1MjksImV4cCI6MjA3NTI5MjUyOX0.C-WSNsWE7yP3csd_BWAxg8zjSiOpyNrqa91pTP8NfOw';
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+        const Clock = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+        const MapPin = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const Plus = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+        const ChevronLeft = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>;
+        const ChevronRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>;
+        const Settings = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-9-9h6m6 0h6"/></svg>;
+        const X = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const Edit2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>;
+        const Trash = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
+        const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const List = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
+
+        const TUNISIA_LOCATIONS = {
+          'Tunis': ['Tunis Centre', 'La Marsa', 'Carthage', 'Sidi Bou Said', 'Le Bardo', 'La Goulette', 'El Omrane', 'El Menzah', 'Manar', 'Ennasr', 'Montplaisir', 'Lafayette', 'Mutuelleville', 'Bab Bhar', 'Medina', 'Bab Souika', 'Séjoumi', 'Djebel Jelloud', 'La Petite Ariana', 'Kabbaria', 'Zahrouni'],
+          'Ariana': ['Ariana Centre', 'Ariana Ville', 'Ettadhamen', 'Mnihla', 'Raoued', 'Kalâat el-Andalous', 'Soukra', 'Sidi Thabet', 'Chotrana'],
+          'Ben Arous': ['Ben Arous Centre', 'Rades', 'Hammam Lif', 'Hammam Chott', 'Boumhel', 'El Mourouj', 'Fouchana', 'Megrine', 'Mohamedia', 'Nouvelle Medina', 'Ezzahra'],
+          'Manouba': ['Manouba Centre', 'Oued Ellil', 'Tebourba', 'Djedeida', 'Mornaguia', 'Borj El Amri', 'El Battan', 'Douar Hicher'],
+          'Sfax': ['Sfax Centre', 'Sfax Ville', 'Sakiet Ezzit', 'Sakiet Eddaier', 'Thyna', 'El Ain', 'Agareb', 'Jebiniana', 'Bir Ali Ben Khelifa', 'Skhira', 'Mahres', 'Menzel Chaker', 'Ghraiba', 'Route Gremda', 'Route Tunis', 'Route Mahdia', 'Route Menzel Chaker', 'Sidi Mansour'],
+          'Sousse': ['Sousse Centre', 'Sousse Ville', 'Hammam Sousse', 'Khezama', 'Port El Kantaoui', 'Msaken', 'Kalâa Kebira', 'Kalâa Sghira', 'Akouda', 'Sidi Bou Ali', 'Sidi El Hani', 'Enfidha', 'Bouficha', 'Kondar', 'Hammam Susah'],
+          'Gafsa': ['Gafsa Centre', 'Gafsa Nord', 'Gafsa Sud', 'Ksar', 'Sidi Aich', 'El Guettar', 'Métlaoui', 'Redeyef', 'Mdhila', 'Moularès', 'Sned', 'Belkhir', 'El Ksar', 'Oum El Araies', 'Sidi Ahmed Zarroug', 'Bou Omrane', 'Zannouch', 'Aguila'],
+          'Kairouan': ['Kairouan Centre', 'Kairouan Nord', 'Kairouan Sud', 'Sbikha', 'Haffouz', 'Chebika', 'Oueslatia', 'Nasrallah', 'El Ala', 'Hajeb El Ayoun', 'Bouhajla', 'Chrarda'],
+          'Bizerte': ['Bizerte Centre', 'Bizerte Nord', 'Menzel Bourguiba', 'Mateur', 'Ras Jebel', 'Menzel Jemil', 'Sejnane', 'Joumine', 'Ghezala', 'Tinja', 'Zarzouna', 'El Alia', 'Ghar El Melh'],
+          'Gabès': ['Gabès Centre', 'Gabès Médina', 'Gabès Ouest', 'Mareth', 'El Hamma', 'Métouia', 'Chenini Nahal', 'Nouvelle Matmata', 'Matmata', 'Menzel El Habib', 'Ghannouch'],
+          'Monastir': ['Monastir Centre', 'Monastir Ville', 'Moknine', 'Jemmal', 'Ksar Hellal', 'Téboulba', 'Bembla', 'Zéramdine', 'Sahline', 'Ksibet El Mediouni', 'Bekalta', 'Beni Hassen', 'Ouerdanine'],
+          'Nabeul': ['Nabeul Centre', 'Hammamet', 'Kelibia', 'Korba', 'Menzel Temime', 'Grombalia', 'Beni Khiar', 'Dar Chaabane', 'El Haouaria', 'Takelsa', 'Soliman', 'Menzel Bouzelfa', 'Bou Argoub', 'Hammam Ghezèze'],
+          'Médenine': ['Médenine Centre', 'Médenine Nord', 'Médenine Sud', 'Zarzis', 'Djerba Houmt Souk', 'Djerba Midoun', 'Djerba Ajim', 'Ben Gardane', 'Beni Khedache', 'Sidi Makhlouf'],
+          'Mahdia': ['Mahdia Centre', 'Ksour Essef', 'Chorbane', 'Sidi Alouane', 'El Jem', 'Chebba', 'Melloulèche', 'Ouled Chamekh', 'Bou Merdes', 'Hebira'],
+          'Tataouine': ['Tataouine Centre', 'Tataouine Nord', 'Tataouine Sud', 'Ghomrassen', 'Bir Lahmar', 'Dehiba', 'Remada', 'Smar'],
+          'Kasserine': ['Kasserine Centre', 'Kasserine Nord', 'Kasserine Sud', 'Sbeitla', 'Sbiba', 'Feriana', 'Foussana', 'Thala', 'Hassi El Frid', 'Jediliane', 'El Ayoun'],
+          'Sidi Bouzid': ['Sidi Bouzid Centre', 'Sidi Bouzid Ouest', 'Sidi Bouzid Est', 'Regueb', 'Jilma', 'Cebbala Ouled Asker', 'Bir El Hafey', 'Sidi Ali Ben Aoun', 'Menzel Bouzaiane', 'Meknassy', 'Souk Jedid'],
+          'Zaghouan': ['Zaghouan Centre', 'Bir Mcherga', 'El Fahs', 'Nadhour', 'Zriba', 'Saouaf'],
+          'Siliana': ['Siliana Centre', 'Siliana Nord', 'Siliana Sud', 'Bou Arada', 'Gaâfour', 'El Krib', 'Makthar', 'Rouhia', 'Kesra', 'Bargou', 'El Aroussa'],
+          'Kef': ['Le Kef Centre', 'Dahmani', 'Sers', 'Tajerouine', 'Kalaat Senan', 'Kalâat Khasba', 'Nebeur', 'Sakiet Sidi Youssef', 'Touiref', 'Jérissa'],
+          'Jendouba': ['Jendouba Centre', 'Jendouba Nord', 'Bou Salem', 'Tabarka', 'Ain Draham', 'Fernana', 'Ghardimaou', 'Oued Meliz', 'Balta Bou Aouane'],
+          'Tozeur': ['Tozeur Centre', 'Degache', 'Nefta', 'Tamerza', 'Hazoua'],
+          'Kebili': ['Kebili Centre', 'Kebili Sud', 'Douz', 'Douz Nord', 'Douz Sud', 'Souk Lahad', 'Faouar']
+        };
+
+        const PRAYER_NAMES = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+        const COLORS = ['#EF4444', '#F97316', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899'];
+        
+        function TaskForm({ task, setTask, onSubmit, submitLabel }) {
+          return (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-2">Task Title</label>
+                <input type="text" value={task.title} onChange={(e) => setTask({ ...task, title: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="e.g., College Session" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-2">Task Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setTask({ ...task, type: 'stable' })} className={`p-3 rounded-lg border-2 transition ${task.type === 'stable' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'}`}>
+                    <div className="font-semibold">Stable</div>
+                    <div className="text-xs text-gray-400">Fixed time</div>
+                  </button>
+                  <button type="button" onClick={() => setTask({ ...task, type: 'moving' })} className={`p-3 rounded-lg border-2 transition ${task.type === 'moving' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-500'}`}>
+                    <div className="font-semibold">Moving</div>
+                    <div className="text-xs text-gray-400">Prayer-based</div>
+                  </button>
+                </div>
+              </div>
+              {task.type === 'stable' ? (
+  <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-4">
+  <div>
+    <label className="block text-sm font-medium text-gray-200 mb-2">Start Time</label>
+    <input type="time" value={task.startTime} onChange={(e) => setTask({ ...task, startTime: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" required />
+  </div>
+  {!task.hasMovingEnd && (
+    <div>
+      <label className="block text-sm font-medium text-gray-200 mb-2">End Time</label>
+      <input type="time" value={task.endTime} onChange={(e) => setTask({ ...task, endTime: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" required />
+    </div>
+  )}
+</div>
+    <div className="flex items-center gap-2">
+      <input 
+        type="checkbox" 
+        id="hasMovingEnd" 
+        checked={task.hasMovingEnd} 
+        onChange={(e) => setTask({ ...task, hasMovingEnd: e.target.checked })}
+        className="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-2 focus:ring-teal-500"
+      />
+      <label htmlFor="hasMovingEnd" className="text-sm font-medium text-gray-200">Use prayer-based end time</label>
+    </div>
+    {task.hasMovingEnd && (
+      <div className="space-y-4 pl-6 border-l-2 border-teal-500/30">
+        <div>
+          <label className="block text-sm font-medium text-gray-200 mb-2">End Time Type</label>
+          <div className="grid grid-cols-3 gap-2">
+            <button type="button" onClick={() => setTask({ ...task, endType: 'duration' })} className={`p-3 rounded-lg border-2 transition ${task.endType === 'duration' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300'}`}>
+              <div className="font-semibold text-sm">Duration</div>
+            </button>
+            <button type="button" onClick={() => setTask({ ...task, endType: 'prayer' })} className={`p-3 rounded-lg border-2 transition ${task.endType === 'prayer' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300'}`}>
+              <div className="font-semibold text-sm">Prayer</div>
+            </button>
+            <button type="button" onClick={() => setTask({ ...task, endType: 'fixed' })} className={`p-3 rounded-lg border-2 transition ${task.endType === 'fixed' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300'}`}>
+              <div className="font-semibold text-sm">Fixed</div>
+            </button>
+          </div>
+        </div>
+        {task.endType === 'duration' ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-200 mb-2">Duration (minutes)</label>
+            <input type="number" value={task.duration} onChange={(e) => setTask({ ...task, duration: parseInt(e.target.value) || 60 })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+          </div>
+        ) : task.endType === 'prayer' ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-200 mb-2">End Prayer</label>
+            <select value={task.endPrayer || 'Sunrise'} onChange={(e) => setTask({ ...task, endPrayer: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+              {PRAYER_NAMES.map(prayer => <option key={prayer} value={prayer}>{prayer}</option>)}
+            </select>
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-gray-200 mb-2">End Prayer Offset (minutes)</label>
+              <input type="number" value={task.endOffsetMinutes || 0} onChange={(e) => setTask({ ...task, endOffsetMinutes: parseInt(e.target.value) || 0 })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="e.g., -5" />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-200 mb-2">Fixed End Time</label>
+            <input type="time" value={task.fixedEndTime || ''} onChange={(e) => setTask({ ...task, fixedEndTime: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">Start Prayer</label>
+                    <select value={task.prayerReference} onChange={(e) => setTask({ ...task, prayerReference: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                      {PRAYER_NAMES.map(prayer => <option key={prayer} value={prayer}>{prayer}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">Start Offset (minutes)</label>
+                    <input type="number" value={task.offsetMinutes} onChange={(e) => setTask({ ...task, offsetMinutes: parseInt(e.target.value) || 0 })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="e.g., 30" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">End Time Type</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button type="button" onClick={() => setTask({ ...task, endType: 'duration' })} className={`p-3 rounded-lg border-2 transition ${task.endType === 'duration' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300'}`}>
+                        <div className="font-semibold text-sm">Duration</div>
+                      </button>
+                      <button type="button" onClick={() => setTask({ ...task, endType: 'prayer' })} className={`p-3 rounded-lg border-2 transition ${task.endType === 'prayer' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300'}`}>
+                        <div className="font-semibold text-sm">Prayer</div>
+                      </button>
+                      <button type="button" onClick={() => setTask({ ...task, endType: 'fixed' })} className={`p-3 rounded-lg border-2 transition ${task.endType === 'fixed' ? 'border-teal-500 bg-teal-900/30 text-teal-300' : 'border-gray-600 bg-gray-700 text-gray-300'}`}>
+                        <div className="font-semibold text-sm">Fixed</div>
+                      </button>
+                    </div>
+                  </div>
+                  {task.endType === 'duration' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Duration (minutes)</label>
+                      <input type="number" value={task.duration} onChange={(e) => setTask({ ...task, duration: parseInt(e.target.value) || 60 })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+                    </div>
+                  ) : task.endType === 'prayer' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">End Prayer</label>
+                      <select value={task.endPrayer || 'Sunrise'} onChange={(e) => setTask({ ...task, endPrayer: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                        {PRAYER_NAMES.map(prayer => <option key={prayer} value={prayer}>{prayer}</option>)}
+                      </select>
+                      <div className="mt-2">
+                        <label className="block text-sm font-medium text-gray-200 mb-2">End Prayer Offset (minutes)</label>
+                        <input type="number" value={task.endOffsetMinutes || 0} onChange={(e) => setTask({ ...task, endOffsetMinutes: parseInt(e.target.value) || 0 })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="e.g., -5" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Fixed End Time</label>
+                      <input type="time" value={task.fixedEndTime || ''} onChange={(e) => setTask({ ...task, fixedEndTime: e.target.value })} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent" />
+                    </div>
+                  )}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-2">Color</label>
+                <div className="flex flex-wrap gap-2">
+                  {COLORS.map(color => <button key={color} type="button" onClick={() => setTask({ ...task, color })} className={`w-10 h-10 rounded-lg transition ${task.color === color ? 'ring-4 ring-offset-2 ring-offset-gray-800 ring-teal-400' : ''}`} style={{ backgroundColor: color }} />)}
+                </div>
+              </div>
+              <div>
+                <div>
+  <div className="flex items-center justify-between mb-2">
+    <label className="block text-sm font-medium text-gray-200">Schedule</label>
+    <div className="flex items-center gap-2">
+      <input 
+        type="checkbox" 
+        id="isOneTime" 
+        checked={task.isOneTime} 
+        onChange={(e) => setTask({ ...task, isOneTime: e.target.checked, oneTimeDate: e.target.checked ? new Date().toISOString().split('T')[0] : '' })}
+        className="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-2 focus:ring-teal-500"
+      />
+      <label htmlFor="isOneTime" className="text-sm font-medium text-gray-200">One-time task</label>
+    </div>
+  </div>
+  
+  {task.isOneTime ? (
+    <div>
+      <label className="block text-sm font-medium text-gray-200 mb-2">Date</label>
+      <input 
+        type="date" 
+        value={task.oneTimeDate} 
+        onChange={(e) => setTask({ ...task, oneTimeDate: e.target.value })}
+        className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+      />
+    </div>
+  ) : (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-200 mb-2">Repeat Interval</label>
+        <select 
+          value={task.repeatInterval || 1} 
+          onChange={(e) => setTask({ ...task, repeatInterval: parseInt(e.target.value) })}
+          className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+        >
+          <option value={1}>Every week</option>
+          <option value={2}>Every 2 weeks</option>
+          <option value={3}>Every 3 weeks</option>
+          <option value={4}>Every 4 weeks (monthly)</option>
+          <option value={6}>Every 6 weeks</option>
+          <option value={8}>Every 8 weeks</option>
+          <option value={12}>Every 12 weeks (quarterly)</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-200 mb-2">Repeat on Days</label>
+        <div className="grid grid-cols-7 gap-2">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => (
+            <button key={idx} type="button" onClick={() => { const newDays = [...task.days]; newDays[idx] = !newDays[idx]; setTask({ ...task, days: newDays }); }} className={`aspect-square rounded-lg font-semibold transition ${task.days[idx] ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-300 border border-gray-600'}`}>{day}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+              </div>
+              <button type="button" onClick={onSubmit} disabled={!task.title || (task.type === 'stable' && !task.startTime) || (task.type === 'stable' && !task.hasMovingEnd && !task.endTime)} className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition">{submitLabel}</button>
+            </div>
+          );
+        }
+
+        function PrayerScheduler() {
+          const [selectedCity, setSelectedCity] = useState('');
+          const [selectedNeighborhood, setSelectedNeighborhood] = useState('');
+          const [prayerTimes, setPrayerTimes] = useState(null);
+          const [prayerAdjustments, setPrayerAdjustments] = useState({ Fajr: 0, Sunrise: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 });
+          const [tasks, setTasks] = useState([]);
+          const [showAddTask, setShowAddTask] = useState(false);
+          const [showEditTask, setShowEditTask] = useState(false);
+          const [showPrayerSettings, setShowPrayerSettings] = useState(false);
+          const [editingTask, setEditingTask] = useState(null);
+          const [currentView, setCurrentView] = useState(localStorage.getItem('preferredView') || 'day');
+          const [selectedDate, setSelectedDate] = useState(new Date());
+          const [setupComplete, setSetupComplete] = useState(false);
+          const [loading, setLoading] = useState(true);
+          const [currentUser, setCurrentUser] = useState(null);
+          const [isAdmin, setIsAdmin] = useState(false);
+          const [showLogin, setShowLogin] = useState(true);
+          const [showRegister, setShowRegister] = useState(false);
+          const [showAdminPanel, setShowAdminPanel] = useState(false);
+          const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+          const [registerForm, setRegisterForm] = useState({ username: '', password: '', confirmPassword: '', isAdmin: false });
+          const [allUsers, setAllUsers] = useState([]);
+          const [newTask, setNewTask] = useState({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1 });
+
+          useEffect(() => {
+            loadSettings();
+          }, []);
+
+          useEffect(() => {
+            if (selectedCity && selectedNeighborhood) fetchPrayerTimes();
+          }, [selectedCity, selectedNeighborhood, selectedDate]);
+
+          const loadSettings = async () => {
+  try {
+    // Check if user is logged in
+    const storedUser = localStorage.getItem('currentUser');
+    if (!storedUser) {
+      setLoading(false);
+      setShowLogin(true);
+      return;
+    }
+
+    const user = JSON.parse(storedUser);
+    setCurrentUser(user);
+    setIsAdmin(user.is_admin || false);
+    setShowLogin(false);
+
+    const { data: settings, error: settingsError } = await supabaseClient
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (settings && !settingsError) {
+      setSelectedCity(settings.selected_city || '');
+      setSelectedNeighborhood(settings.selected_neighborhood || '');
+      setPrayerAdjustments(settings.prayer_adjustments || { Fajr: 0, Sunrise: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 });
+      setSetupComplete(!!settings.selected_city && !!settings.selected_neighborhood);
+    }
+
+    const { data: tasksData, error: tasksError } = await supabaseClient
+      .from('tasks')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (tasksData && !tasksError) {
+      const formattedTasks = tasksData.map(task => ({
+        id: task.id,
+        title: task.title,
+        type: task.type,
+        startTime: task.start_time || '',
+        endTime: task.end_time || '',
+        prayerReference: task.prayer_reference || 'Fajr',
+        offsetMinutes: task.offset_minutes || 0,
+        duration: task.duration || 60,
+        endType: task.end_type || 'duration',
+        endPrayer: task.end_prayer || 'Sunrise',
+        endOffsetMinutes: task.end_offset_minutes || 0,
+        fixedEndTime: task.fixed_end_time || '',
+        color: task.color,
+        days: task.days || [true, true, true, true, true, true, true],
+        hasMovingEnd: task.has_moving_end || false,
+        isOneTime: task.is_one_time || false,
+        oneTimeDate: task.one_time_date || '',
+        repeatInterval: task.repeat_interval || 1
+      }));
+      setTasks(formattedTasks);
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleLogin = async () => {
+  try {
+    const { data: users, error } = await supabaseClient
+      .from('users')
+      .select('*')
+      .eq('username', loginForm.username)
+      .single();
+
+    if (error || !users) {
+      alert('Invalid username or password');
+      return;
+    }
+
+    // Simple password check (in production, use proper hashing)
+    if (users.password !== loginForm.password) {
+      alert('Invalid username or password');
+      return;
+    }
+
+    const userData = {
+      id: users.id,
+      username: users.username,
+      is_admin: users.is_admin
+    };
+
+    localStorage.setItem('currentUser', JSON.stringify(userData));
+    setCurrentUser(userData);
+    setIsAdmin(users.is_admin || false);
+    setShowLogin(false);
+    setLoginForm({ username: '', password: '' });
+    
+    await loadSettings();
+  } catch (error) {
+    console.error('Login error:', error);
+    alert('Login failed');
+  }
+};
+
+const handleRegister = async () => {
+  try {
+    if (!registerForm.username || !registerForm.password) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    if (registerForm.password !== registerForm.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    // Check if username exists
+    const { data: existingUser } = await supabaseClient
+      .from('users')
+      .select('username')
+      .eq('username', registerForm.username)
+      .single();
+
+    if (existingUser) {
+      alert('Username already exists');
+      return;
+    }
+
+    // Create new user
+    const { data, error } = await supabaseClient
+      .from('users')
+      .insert([{
+        username: registerForm.username,
+        password: registerForm.password, // In production, hash this!
+        is_admin: false,
+        created_at: new Date().toISOString()
+      }])
+      .select();
+
+    if (error) {
+      alert('Registration failed: ' + error.message);
+      return;
+    }
+
+    alert('Registration successful! Please login.');
+    setShowRegister(false);
+    setRegisterForm({ username: '', password: '', confirmPassword: '' });
+  } catch (error) {
+    console.error('Registration error:', error);
+    alert('Registration failed');
+  }
+};
+
+const handleLogout = () => {
+  localStorage.removeItem('currentUser');
+  setCurrentUser(null);
+  setIsAdmin(false);
+  setShowLogin(true);
+  setTasks([]);
+  setSetupComplete(false);
+};
+
+const loadAllUsers = async () => {
+  try {
+    const { data, error } = await supabaseClient
+      .from('users')
+      .select('id, username, is_admin, created_at')
+      .order('created_at', { ascending: false });
+
+    if (data && !error) {
+      setAllUsers(data);
+    }
+  } catch (error) {
+    console.error('Error loading users:', error);
+  }
+};
+
+const handleDeleteUser = async (userId) => {
+  if (!confirm('Are you sure you want to delete this user?')) return;
+  
+  try {
+    // Delete user's tasks
+    await supabaseClient.from('tasks').delete().eq('user_id', userId);
+    
+    // Delete user's settings
+    await supabaseClient.from('user_settings').delete().eq('user_id', userId);
+    
+    // Delete user
+    const { error } = await supabaseClient.from('users').delete().eq('id', userId);
+    
+    if (error) {
+      alert('Failed to delete user: ' + error.message);
+      return;
+    }
+    
+    alert('User deleted successfully');
+    loadAllUsers();
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    alert('Failed to delete user');
+  }
+};
+
+const handleToggleAdmin = async (userId, currentIsAdmin) => {
+  try {
+    const { error } = await supabaseClient
+      .from('users')
+      .update({ is_admin: !currentIsAdmin })
+      .eq('id', userId);
+
+    if (error) {
+      alert('Failed to update user: ' + error.message);
+      return;
+    }
+
+    loadAllUsers();
+  } catch (error) {
+    console.error('Error updating user:', error);
+    alert('Failed to update user');
+  }
+};
+
+
+          const saveSettings = async () => {
+            try {
+              const { error } = await supabaseClient
+                .from('user_settings')
+                .upsert({
+                  user_id: currentUser.id,
+                  selected_city: selectedCity,
+                  selected_neighborhood: selectedNeighborhood,
+                  prayer_adjustments: prayerAdjustments,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+
+              if (error) console.error('Error saving settings:', error);
+            } catch (error) {
+              console.error('Error saving settings:', error);
+            }
+          };
+
+          const saveTask = async (task) => {
+            try {
+              const taskData = {
+                user_id: currentUser.id,
+                title: task.title,
+                type: task.type,
+                start_time: task.startTime || null,
+                end_time: task.endTime || null,
+                prayer_reference: task.prayerReference || null,
+                offset_minutes: task.offsetMinutes || 0,
+                duration: task.duration || 60,
+                end_type: task.endType || 'duration',
+                end_prayer: task.endPrayer || null,
+                end_offset_minutes: task.endOffsetMinutes || 0,
+                fixed_end_time: task.fixedEndTime || null,
+                color: task.color,
+                days: task.days,
+                has_moving_end: task.hasMovingEnd || false,
+                is_one_time: task.isOneTime || false,
+                one_time_date: task.oneTimeDate || null,
+                repeat_interval: task.repeatInterval || 1,
+                updated_at: new Date().toISOString()
+              };
+
+              if (task.id && typeof task.id === 'string' && task.id.includes('-')) {
+                const { error } = await supabaseClient
+                  .from('tasks')
+                  .update(taskData)
+                  .eq('id', task.id);
+                if (error) console.error('Error updating task:', error);
+              } else {
+                const { data, error } = await supabaseClient
+                  .from('tasks')
+                  .insert([taskData])
+                  .select();
+                if (error) console.error('Error inserting task:', error);
+                return data?.[0]?.id;
+              }
+            } catch (error) {
+              console.error('Error saving task:', error);
+            }
+          };
+
+          const deleteTaskFromDB = async (taskId) => {
+            try {
+              const { error } = await supabaseClient
+                .from('tasks')
+                .delete()
+                .eq('id', taskId);
+              if (error) console.error('Error deleting task:', error);
+            } catch (error) {
+              console.error('Error deleting task:', error);
+            }
+          };
+
+          const fetchPrayerTimes = async () => {
+            try {
+              const day = String(selectedDate.getDate()).padStart(2, '0');
+              const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+              const year = selectedDate.getFullYear();
+              const response = await fetch(`https://api.aladhan.com/v1/timingsByCity/${day}-${month}-${year}?city=${selectedCity}&country=Tunisia&method=18`);
+              const data = await response.json();
+              if (data.code === 200) {
+                const timings = data.data.timings;
+                const convertTo12Hour = (time24) => {
+                  const [hours, minutes] = time24.split(':');
+                  const h = parseInt(hours);
+                  const period = h >= 12 ? 'PM' : 'AM';
+                  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                  return `${h12}:${minutes} ${period}`;
+                };
+                const convertedTimings = {};
+                Object.keys(timings).forEach(key => {
+                  convertedTimings[key] = convertTo12Hour(timings[key]);
+                });
+                setPrayerTimes(convertedTimings);
+              }
+            } catch (error) {
+              console.error('Error fetching prayer times:', error);
+            }
+          };
+
+          const applyPrayerAdjustment = (prayerTime, prayerName) => {
+            if (!prayerTime) return null;
+            if (!prayerAdjustments[prayerName]) return prayerTime;
+            const adjustment = prayerAdjustments[prayerName];
+            const [time, period] = prayerTime.split(' ');
+            if (!time || !period) return prayerTime;
+            const [hours, minutes] = time.split(':').map(Number);
+            let totalMinutes = (period === 'PM' && hours !== 12 ? hours + 12 : hours === 12 && period === 'AM' ? 0 : hours) * 60 + minutes;
+            totalMinutes += adjustment;
+            if (totalMinutes < 0) totalMinutes += 1440;
+            if (totalMinutes >= 1440) totalMinutes -= 1440;
+            const newHours = Math.floor(totalMinutes / 60);
+            const newMinutes = totalMinutes % 60;
+            const newPeriod = newHours >= 12 ? 'PM' : 'AM';
+            const displayHours = newHours === 0 ? 12 : newHours > 12 ? newHours - 12 : newHours;
+            return `${displayHours}:${String(newMinutes).padStart(2, '0')} ${newPeriod}`;
+          };
+
+          const calculateTaskTime = (task) => {
+  if (task.type === 'stable' && !task.hasMovingEnd) {
+    return { start: task.startTime, end: task.endTime };
+  }
+  
+  if (!prayerTimes) return null;
+  
+  try {
+    let startMinutes;
+    
+    if (task.type === 'stable') {
+      const [startHours, startMins] = task.startTime.split(':').map(Number);
+      startMinutes = startHours * 60 + startMins;
+    } else {
+      const adjustedPrayerTime = applyPrayerAdjustment(prayerTimes[task.prayerReference], task.prayerReference);
+      if (!adjustedPrayerTime) return null;
+      
+      const [time, period] = adjustedPrayerTime.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let totalMinutes = (period === 'PM' && hours !== 12 ? hours + 12 : hours === 12 && period === 'AM' ? 0 : hours) * 60 + minutes;
+      startMinutes = totalMinutes + (task.offsetMinutes || 0);
+    }
+    
+    let endMinutes;
+    if (task.hasMovingEnd || task.type === 'moving') {
+      if (task.endType === 'fixed' && task.fixedEndTime) {
+        const [endHours, endMins] = task.fixedEndTime.split(':').map(Number);
+        endMinutes = endHours * 60 + endMins;
+        
+        if (endMinutes <= startMinutes) {
+          endMinutes += 1440;
+        }
+      } else if (task.endType === 'prayer' && task.endPrayer) {
+        if (!prayerTimes[task.endPrayer]) {
+          endMinutes = startMinutes + (task.duration || 60);
+        } else {
+          const endAdjustedPrayerTime = applyPrayerAdjustment(prayerTimes[task.endPrayer], task.endPrayer);
+          if (!endAdjustedPrayerTime) {
+            endMinutes = startMinutes + (task.duration || 60);
+          } else {
+            const [endTime, endPeriod] = endAdjustedPrayerTime.split(' ');
+            const [endHours, endMins] = endTime.split(':').map(Number);
+            let endTotalMinutes = (endPeriod === 'PM' && endHours !== 12 ? endHours + 12 : endHours === 12 && endPeriod === 'AM' ? 0 : endHours) * 60 + endMins;
+            endMinutes = endTotalMinutes + (task.endOffsetMinutes || 0);
+            
+            if (endMinutes <= startMinutes) {
+              endMinutes += 1440;
+            }
+          }
+        }
+      } else {
+        endMinutes = startMinutes + (task.duration || 60);
+      }
+    } else {
+      const [endHours, endMins] = task.endTime.split(':').map(Number);
+      endMinutes = endHours * 60 + endMins;
+      if (endMinutes <= startMinutes) {
+        endMinutes += 1440;
+      }
+    }
+    
+    const formatTime = (mins) => { 
+      const h = Math.floor(mins / 60) % 24; 
+      const m = mins % 60; 
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; 
+    };
+    
+    return { start: formatTime(startMinutes), end: formatTime(endMinutes) };
+  } catch (error) {
+    console.error('Error calculating task time:', error);
+    return null;
+  }
+};
+
+          const getTasksForDate = (date) => {
+  return tasks.filter(task => {
+    if (task.isOneTime) {
+      if (!task.oneTimeDate) return false;
+      const taskDate = new Date(task.oneTimeDate + 'T00:00:00');
+      return taskDate.toDateString() === date.toDateString();
+    } else {
+      const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
+      if (!task.days[dayIndex]) return false;
+      
+      const interval = task.repeatInterval || 1;
+      if (interval === 1) return true;
+      
+      const baseDate = new Date('2025-01-06'); // A known Monday
+      const diffTime = date.getTime() - baseDate.getTime();
+      const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+      
+      return diffWeeks % interval === 0;
+    }
+  });
+};
+
+          const isTaskCurrent = (task, date) => {
+            const taskTime = calculateTaskTime(task);
+            if (!taskTime) return false;
+            const now = new Date();
+            if (date.toDateString() !== now.toDateString()) return false;
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const [startH, startM] = taskTime.start.split(':').map(Number);
+            const [endH, endM] = taskTime.end.split(':').map(Number);
+            return currentMinutes >= (startH * 60 + startM) && currentMinutes < (endH * 60 + endM);
+          };
+
+          const isTaskPast = (task, date) => {
+            const taskTime = calculateTaskTime(task);
+            if (!taskTime) return false;
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            if (!isToday) return date < now;
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const [endH, endM] = taskTime.end.split(':').map(Number);
+            return currentMinutes >= (endH * 60 + endM);
+          };
+
+          const handleAddTask = async () => {
+  try {
+    if (!newTask.title || !newTask.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+    
+    if (newTask.type === 'stable' && !newTask.startTime) {
+      alert('Please enter a start time');
+      return;
+    }
+    
+    if (newTask.type === 'stable' && !newTask.hasMovingEnd && !newTask.endTime) {
+      alert('Please enter an end time');
+      return;
+    }
+
+    const taskData = {
+      user_id: 'default_user',
+      title: newTask.title.trim(),
+      type: newTask.type,
+      color: newTask.color || COLORS[0],
+      days: newTask.days || [true, true, true, true, true, true, true],
+      repeat_interval: newTask.repeatInterval || 1
+    };
+
+    if (newTask.type === 'stable') {
+      taskData.start_time = newTask.startTime || null;
+      if (!newTask.hasMovingEnd) {
+        taskData.end_time = newTask.endTime || null;
+      }
+    } else {
+      taskData.prayer_reference = newTask.prayerReference || null;
+      taskData.offset_minutes = newTask.offsetMinutes || 0;
+    }
+
+    if (newTask.duration) taskData.duration = newTask.duration;
+    if (newTask.hasMovingEnd !== undefined) taskData.has_moving_end = newTask.hasMovingEnd;
+    if (newTask.endType) taskData.end_type = newTask.endType;
+    if (newTask.endPrayer) taskData.end_prayer = newTask.endPrayer;
+    if (newTask.endOffsetMinutes !== undefined) taskData.end_offset_minutes = newTask.endOffsetMinutes;
+    if (newTask.fixedEndTime) taskData.fixed_end_time = newTask.fixedEndTime;
+    if (newTask.isOneTime !== undefined) taskData.is_one_time = newTask.isOneTime;
+    if (newTask.oneTimeDate) taskData.one_time_date = newTask.oneTimeDate;
+
+    const { data, error } = await supabaseClient
+      .from('tasks')
+      .insert([taskData])
+      .select();
+
+    if (error) {
+      console.error('Supabase error details:', error);
+      alert(`Failed to save task: ${error.message || 'Unknown error'}`);
+      return;
+    }
+
+    if (data && data[0]) {
+      const taskToAdd = { ...newTask, id: data[0].id };
+      setTasks([...tasks, taskToAdd]);
+      setNewTask({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1 });
+      setShowAddTask(false);
+    }
+  } catch (error) {
+    console.error('Unexpected error adding task:', error);
+    alert(`Failed to save task: ${error.message || 'Unexpected error'}`);
+  }
+};
+
+          const handleDeleteTask = async (taskId) => {
+            await deleteTaskFromDB(taskId);
+            setTasks(tasks.filter(t => t.id !== taskId));
+          };
+
+          const handleEditTask = (task) => {
+            setEditingTask(task);
+            setNewTask({ ...task });
+            setShowEditTask(true);
+          };
+
+          const handleUpdateTask = async () => {
+  try {
+    if (!newTask.title || !newTask.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+    
+    if (newTask.type === 'stable' && !newTask.startTime) {
+      alert('Please enter a start time');
+      return;
+    }
+    
+    if (newTask.type === 'stable' && !newTask.hasMovingEnd && !newTask.endTime) {
+      alert('Please enter an end time');
+      return;
+    }
+
+    const taskData = {
+      user_id: 'default_user',
+      title: newTask.title.trim(),
+      type: newTask.type,
+      color: newTask.color || COLORS[0],
+      days: newTask.days || [true, true, true, true, true, true, true],
+      repeat_interval: newTask.repeatInterval || 1
+    };
+
+    if (newTask.type === 'stable') {
+      taskData.start_time = newTask.startTime || null;
+      if (!newTask.hasMovingEnd) {
+        taskData.end_time = newTask.endTime || null;
+      }
+    } else {
+      taskData.prayer_reference = newTask.prayerReference || null;
+      taskData.offset_minutes = newTask.offsetMinutes || 0;
+    }
+
+    if (newTask.duration) taskData.duration = newTask.duration;
+    if (newTask.hasMovingEnd !== undefined) taskData.has_moving_end = newTask.hasMovingEnd;
+    if (newTask.endType) taskData.end_type = newTask.endType;
+    if (newTask.endPrayer) taskData.end_prayer = newTask.endPrayer;
+    if (newTask.endOffsetMinutes !== undefined) taskData.end_offset_minutes = newTask.endOffsetMinutes;
+    if (newTask.fixedEndTime) taskData.fixed_end_time = newTask.fixedEndTime;
+    if (newTask.isOneTime !== undefined) taskData.is_one_time = newTask.isOneTime;
+    if (newTask.oneTimeDate) taskData.one_time_date = newTask.oneTimeDate;
+
+    const { error } = await supabaseClient
+      .from('tasks')
+      .update(taskData)
+      .eq('id', editingTask.id);
+
+    if (error) {
+      console.error('Supabase error details:', error);
+      alert(`Failed to update task: ${error.message || 'Unknown error'}`);
+      return;
+    }
+
+    setTasks(tasks.map(t => t.id === editingTask.id ? { ...newTask, id: editingTask.id } : t));
+    setNewTask({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1 });
+    setShowEditTask(false);
+    setEditingTask(null);
+  } catch (error) {
+    console.error('Unexpected error updating task:', error);
+    alert(`Failed to update task: ${error.message || 'Unexpected error'}`);
+  }
+};
+
+          const handleSavePrayerAdjustments = async () => {
+            await saveSettings();
+            setShowPrayerSettings(false);
+            if (selectedCity && selectedNeighborhood) fetchPrayerTimes();
+          };
+
+          const changeDate = (days) => {
+            const newDate = new Date(selectedDate);
+            newDate.setDate(newDate.getDate() + days);
+            setSelectedDate(newDate);
+          };
+
+          const getWeekDates = () => {
+            const start = new Date(selectedDate);
+            const day = start.getDay();
+            const diff = day === 0 ? 6 : day - 1;
+            start.setDate(start.getDate() - diff);
+            return Array.from({ length: 7 }, (_, i) => {
+              const date = new Date(start);
+              date.setDate(start.getDate() + i);
+              return date;
+            });
+          };
+
+          const handleCompleteSetup = async () => {
+            await saveSettings();
+            setSetupComplete(true);
+          };
+
+          if (showLogin) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 flex items-center justify-center">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-8 max-w-md w-full">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-100">Prayer Scheduler</h1>
+          <p className="text-gray-400 mt-2">
+            {showRegister ? 'Create your account' : 'Sign in to continue'}
+          </p>
+        </div>
+
+        {!showRegister ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">Username</label>
+              <input
+                type="text"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="Enter your username"
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">Password</label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="Enter your password"
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              />
+            </div>
+            <button
+              onClick={handleLogin}
+              className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition"
+            >
+              Sign In
+            </button>
+            <div className="text-center">
+              <button
+                onClick={() => setShowRegister(true)}
+                className="text-teal-400 hover:text-teal-300 text-sm"
+              >
+                Don't have an account? Register here
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">Username</label>
+              <input
+                type="text"
+                value={registerForm.username}
+                onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
+                className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="Choose a username"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">Password</label>
+              <input
+                type="password"
+                value={registerForm.password}
+                onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="Choose a password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-200 mb-2">Confirm Password</label>
+              <input
+                type="password"
+                value={registerForm.confirmPassword}
+                onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                placeholder="Confirm your password"
+                onKeyPress={(e) => e.key === 'Enter' && handleRegister()}
+              />
+            </div>
+            <button
+              onClick={handleRegister}
+              className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition"
+            >
+              Register
+            </button>
+            <div className="text-center">
+              <button
+                onClick={() => setShowRegister(false)}
+                className="text-teal-400 hover:text-teal-300 text-sm"
+              >
+                Already have an account? Sign in
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+          if (loading) {
+            return (
+              <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+                <div className="text-xl font-semibold text-gray-300">Loading...</div>
+              </div>
+            );
+          }
+
+          if (!setupComplete) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4 flex items-center justify-center">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-8 max-w-md w-full">
+                  <div className="text-center mb-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-900/50 rounded-full mb-4 text-teal-400">
+                      <MapPin />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-100">Welcome</h1>
+                    <p className="text-gray-400 mt-2">Set your location to get started</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">City</label>
+                      <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedNeighborhood(''); }} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                        <option value="">Select a city</option>
+                        {Object.keys(TUNISIA_LOCATIONS).map(city => <option key={city} value={city}>{city}</option>)}
+                      </select>
+                    </div>
+                    {selectedCity && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-200 mb-2">Neighborhood</label>
+                        <select value={selectedNeighborhood} onChange={(e) => setSelectedNeighborhood(e.target.value)} className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+                          <option value="">Select a neighborhood</option>
+                          {TUNISIA_LOCATIONS[selectedCity].map(n => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    <button onClick={handleCompleteSetup} disabled={!selectedCity || !selectedNeighborhood} className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition">Continue</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          const tasksForDay = getTasksForDate(selectedDate).sort((a, b) => {
+            const aTime = calculateTaskTime(a);
+            const bTime = calculateTaskTime(b);
+
+            if (!aTime && !bTime) return 0;
+            if (!aTime) return 1;
+            if (!bTime) return -1;
+            return aTime.start.localeCompare(bTime.start);
+          });
+
+          return (
+            <div className="min-h-screen bg-gray-900">
+              {/* Header */}
+              <div className="bg-gray-800 border-b border-gray-700 sticky top-0 z-10">
+                <div className="max-w-7xl mx-auto px-4 py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-xl font-bold text-white">Prayer Scheduler</h1>
+                      <div className="flex items-center text-sm text-gray-400 mt-1">
+                        <MapPin />
+                        <span className="ml-1">{selectedCity}, {selectedNeighborhood}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+  {isAdmin && (
+    <button
+      onClick={() => {
+        setShowAdminPanel(true);
+        loadAllUsers();
+      }}
+      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
+    >
+      Admin Panel
+    </button>
+  )}
+  <button onClick={() => setSetupComplete(false)} className="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400 hover:text-gray-200">
+    <Settings />
+  </button>
+  <button
+    onClick={handleLogout}
+    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+  >
+    Logout
+  </button>
+</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-7xl mx-auto p-4">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                  {/* Prayer Times Sidebar */}
+                  <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-4 sticky top-20">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="font-bold text-white flex items-center gap-2">
+                        <Clock />
+                        Prayer Times
+                      </h2>
+                      <button onClick={() => setShowPrayerSettings(true)} className="text-gray-400 hover:text-gray-200">
+                        <Settings />
+                      </button>
+                    </div>
+                    {prayerTimes ? (
+                      <div className="space-y-2">
+                        {PRAYER_NAMES.map(prayer => {
+                          const adjustedTime = applyPrayerAdjustment(prayerTimes[prayer], prayer);
+                          const hasAdjustment = prayerAdjustments[prayer] !== 0;
+                          return (
+                            <div key={prayer} className="flex justify-between items-center p-2 rounded-lg hover:bg-gray-700">
+                              <span className="text-sm font-medium text-gray-300">{prayer}</span>
+                              <div className="text-right">
+                                <div className="text-sm font-semibold text-teal-400">{adjustedTime}</div>
+                                {hasAdjustment && (
+                                  <div className="text-xs text-gray-500">
+                                    ({prayerAdjustments[prayer] > 0 ? '+' : ''}{prayerAdjustments[prayer]}m)
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : <p className="text-sm text-gray-400">Loading...</p>}
+                    <div className="mt-4 p-3 bg-gray-700 rounded-lg">
+                      <p className="text-xs text-gray-300 text-center">
+                        {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Main Content */}
+                  <div className="lg:col-span-3">
+                    <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-4 mb-4">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button onClick={() => currentView === 'day' ? changeDate(-1) : changeDate(-7)} className="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400">
+                            <ChevronLeft />
+                          </button>
+                          <div className="flex-1 sm:flex-none text-center">
+                            {currentView === 'day' ? (
+                              <>
+                                <div className="font-bold text-white">{selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                                <div className="text-xs text-gray-400">{selectedDate.getFullYear()}</div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="font-bold text-white">
+                                  {getWeekDates()[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {getWeekDates()[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </div>
+                                <div className="text-xs text-gray-400">{selectedDate.getFullYear()}</div>
+                              </>
+                            )}
+                          </div>
+                          <button onClick={() => currentView === 'day' ? changeDate(1) : changeDate(7)} className="p-2 hover:bg-gray-700 rounded-lg transition text-gray-400">
+                            <ChevronRight />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <div className="flex bg-gray-700 rounded-lg p-1">
+                            <button 
+                              onClick={() => {
+                                setCurrentView('day');
+                                localStorage.setItem('preferredView', 'day');
+                              }}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition ${currentView === 'day' ? 'bg-gray-600 shadow-sm text-teal-400 font-semibold' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                              <List />
+                              <span className="text-sm">Day</span>
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setCurrentView('week');
+                                localStorage.setItem('preferredView', 'week');
+                              }}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-md transition ${currentView === 'week' ? 'bg-gray-600 shadow-sm text-teal-400 font-semibold' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                              <CalendarIcon />
+                              <span className="text-sm">Week</span>
+                            </button>
+                          </div>
+                          <button onClick={() => setShowAddTask(true)} className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition justify-center">
+                            <Plus />
+                            <span className="hidden sm:inline">Add Task</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tasks Timeline Schedule or Week View */}
+                    {currentView === 'day' ? (
+                      <div className="space-y-3">
+                        {tasksForDay.length === 0 ? (
+                          <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 p-12 text-center">
+                            <div className="text-gray-600 mb-4">
+                              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                              </svg>
+                            </div>
+                            <p className="text-gray-300 font-medium">No tasks for this day</p>
+                            <p className="text-sm text-gray-500 mt-1">Add a task to get started</p>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
+                            <div className="p-4 bg-gradient-to-r from-gray-700 to-gray-800 border-b border-gray-700">
+                              <h3 className="font-bold text-white flex items-center gap-2">
+                                <Clock />
+                                Daily Schedule
+                              </h3>
+                            </div>
+                            <div className="divide-y divide-gray-700">
+                              {tasksForDay.map((task, index) => {
+                                const taskTime = calculateTaskTime(task);
+                                const isCurrent = taskTime ? isTaskCurrent(task, selectedDate) : false;
+                                const isPast = taskTime ? isTaskPast(task, selectedDate) : false;
+                                
+                                let durationMinutes = 60;
+                                if (taskTime) {
+                                  const [startH, startM] = taskTime.start.split(':').map(Number);
+                                  const [endH, endM] = taskTime.end.split(':').map(Number);
+                                  durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+                                  if (durationMinutes < 0) durationMinutes += 1440;
+                                }
+                                
+                                const formatTime12 = (time24) => {
+                                  if (!time24) return '';
+                                  const [hours, minutes] = time24.split(':').map(Number);
+                                  const period = hours >= 12 ? 'PM' : 'AM';
+                                  const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                                  return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
+                                };
+                                
+                                return (
+                                  <div key={task.id} className={`relative ${isPast ? 'opacity-50' : ''}`}>
+                                    <div className="flex gap-4 p-4 hover:bg-gray-700/50 transition group">
+                                      <div className="text-right">
+                                        {taskTime ? (
+                                          <div className="text-right">
+                                            <div className={`text-sm font-bold ${isCurrent ? 'text-teal-400' : 'text-gray-300'}`}>
+                                              {formatTime12(taskTime.start)}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-0.5">
+                                              {formatTime12(taskTime.end)}
+                                            </div>
+                                            <div className="text-xs text-gray-300 mt-1">
+                                              {Math.floor(durationMinutes / 60)}h {durationMinutes % 60}m
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="text-xs text-red-400 text-right">Invalid time</div>
+                                        )}
+                                      </div>
+                                      
+                                      <div className="w-1 flex-shrink-0 relative">
+                                        <div className="absolute inset-y-0 left-1/2 transform -translate-x-1/2 w-0.5 bg-gray-700"></div>
+                                        <div className={`absolute top-1/2 transform -translate-y-1/2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full ${isCurrent ? 'ring-4 ring-teal-900' : ''}`} style={{ backgroundColor: task.color }}></div>
+                                      </div>
+                                      
+                                      <div className="flex-1 min-w-0">
+                                        <div className={`rounded-lg p-4 border-l-4 border border-gray-700 shadow-lg ${isCurrent ? 'ring-2 ring-teal-500' : ''}`} style={{ 
+                                          borderLeftColor: task.color,
+                                          backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40'
+                                        }}>
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <h3 className="font-bold truncate text-white">{task.title}</h3>
+                                                {isCurrent && (
+                                                  <span className="px-2 py-0.5 bg-teal-600 text-white text-xs font-semibold rounded-full flex-shrink-0 animate-pulse">
+                                                    • NOW
+                                                  </span>
+                                                )}
+                                              </div>
+                                              
+                                              <div className="flex flex-wrap gap-2 text-xs mt-2">
+                                                {task.type === 'stable' && !task.hasMovingEnd ? (
+                                                  <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded-full font-medium">
+                                                    Fixed Schedule
+                                                  </span>
+                                                ) : task.type === 'stable' && task.hasMovingEnd ? (
+                                                  <>
+                                                    <span className="px-2 py-1 bg-purple-900/50 text-purple-300 rounded-full font-medium">
+                                                      Fixed Start
+                                                    </span>
+                                                    {task.endType === 'prayer' && (
+                                                      <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded-full font-medium">
+                                                        Until {task.endPrayer} {task.endOffsetMinutes ? (task.endOffsetMinutes > 0 ? '+' : '') + task.endOffsetMinutes + 'm' : ''}
+                                                      </span>
+                                                    )}
+                                                    {task.endType === 'fixed' && (
+                                                      <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded-full font-medium">
+                                                        Until {task.fixedEndTime}
+                                                      </span>
+                                                    )}
+                                                    {task.endType === 'duration' && (
+                                                      <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded-full font-medium">
+                                                        {task.duration} minutes
+                                                      </span>
+                                                    )}
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <span className="px-2 py-1 bg-emerald-900/50 text-emerald-300 rounded-full font-medium">
+                                                      Starts: {task.prayerReference} {task.offsetMinutes >= 0 ? '+' : ''}{task.offsetMinutes}m
+                                                    </span>
+                                                    {task.endType === 'prayer' && (
+                                                      <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded-full font-medium">
+                                                        Ends: {task.endPrayer} {task.endOffsetMinutes ? (task.endOffsetMinutes > 0 ? '+' : '') + task.endOffsetMinutes + 'm' : ''}
+                                                      </span>
+                                                    )}
+                                                    {task.endType === 'fixed' && (
+                                                      <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded-full font-medium">
+                                                        Ends: {task.fixedEndTime}
+                                                      </span>
+                                                    )}
+                                                    {task.endType === 'duration' && (
+                                                      <span className="px-2 py-1 bg-amber-900/50 text-amber-300 rounded-full font-medium">
+                                                        {task.duration} minutes
+                                                      </span>
+                                                    )}
+                                                  </>
+                                                )}
+                                              </div>
+                                            </div>
+                                            
+                                            <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <button onClick={() => handleEditTask(task)} className="p-2 text-gray-400 hover:text-blue-400 hover:bg-gray-700 rounded-lg transition">
+                                                <Edit2 />
+                                              </button>
+                                              <button onClick={() => handleDeleteTask(task.id)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition">
+                                                <Trash />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden">
+                        <div className="grid grid-cols-7 border-b border-gray-700">
+                          {getWeekDates().map((date, index) => {
+                            const isToday = date.toDateString() === new Date().toDateString();
+                            const isSelected = date.toDateString() === selectedDate.toDateString();
+                            return (
+                              <div 
+                                key={index} 
+                                className={`p-3 text-center border-r border-gray-700 last:border-r-0 cursor-pointer transition ${isSelected ? 'bg-teal-900/30' : 'hover:bg-gray-700/50'}`}
+                                onClick={() => setSelectedDate(date)}
+                              >
+                                <div className="text-xs font-medium text-gray-400 uppercase">
+                                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                                </div>
+                                <div className={`text-lg font-bold mt-1 ${isToday ? 'w-8 h-8 mx-auto flex items-center justify-center rounded-full bg-teal-600 text-white' : isSelected ? 'text-teal-400' : 'text-gray-300'}`}>
+                                  {date.getDate()}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Time-based calendar grid */}
+                        <div className="flex overflow-x-auto">
+                          {/* Time labels column */}
+                          <div className="w-16 flex-shrink-0 border-r border-gray-700 bg-gray-800">
+                            <div className="h-12"></div>
+                            {Array.from({ length: 24 }, (_, hour) => (
+                              <div key={hour} className="h-16 border-t border-gray-700 flex items-start justify-end pr-2 pt-1">
+                                <span className="text-xs text-gray-500 font-medium">
+                                  {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Days columns */}
+                          <div className="flex-1 grid grid-cols-7">
+                            {getWeekDates().map((date, dayIndex) => {
+                              const dayTasks = getTasksForDate(date).sort((a, b) => {
+                                const aTime = calculateTaskTime(a);
+                                const bTime = calculateTaskTime(b);
+                                if (!aTime && !bTime) return 0;
+                                if (!aTime) return 1;
+                                if (!bTime) return -1;
+                                return aTime.start.localeCompare(bTime.start);
+                              });
+                              const isToday = date.toDateString() === new Date().toDateString();
+                              
+                              return (
+                                <div key={dayIndex} className={`border-r border-gray-700 last:border-r-0 relative ${isToday ? 'bg-teal-900/10' : ''}`}>
+                                  {/* Hour grid lines */}
+                                  <div className="h-12"></div>
+                                  {Array.from({ length: 24 }, (_, hour) => (
+                                    <div key={hour} className="h-16 border-t border-gray-700"></div>
+                                  ))}
+                                  
+                                  {/* Tasks overlay */}
+                                  <div className="absolute top-12 left-0 right-0 bottom-0 px-1">
+                                    {dayTasks.map((task) => {
+                                      const taskTime = calculateTaskTime(task);
+                                      const isCurrent = taskTime ? isTaskCurrent(task, date) : false;
+                                      const isPast = taskTime ? isTaskPast(task, date) : false;
+                                      
+                                      if (!taskTime) return null;
+                                      
+                                      const [startH, startM] = taskTime.start.split(':').map(Number);
+                                      const [endH, endM] = taskTime.end.split(':').map(Number);
+                                      
+                                      const startMinutes = startH * 60 + startM;
+                                      let endMinutes = endH * 60 + endM;
+                                      
+                                      const pixelsPerMinute = 64 / 60;
+                                      
+                                      const crossesMidnight = endMinutes <= startMinutes;
+                                      
+                                      if (crossesMidnight) {
+                                        const part1Duration = 1440 - startMinutes;
+                                        const part1Top = startMinutes * pixelsPerMinute;
+                                        const part1Height = part1Duration * pixelsPerMinute;
+                                        
+                                        const part2Duration = endMinutes;
+                                        const part2Top = 0;
+                                        const part2Height = part2Duration * pixelsPerMinute;
+                                        
+                                        const formatTime12 = (time24) => {
+                                          if (!time24) return '';
+                                          const [hours, minutes] = time24.split(':').map(Number);
+                                          const period = hours >= 12 ? 'PM' : 'AM';
+                                          const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                                          return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
+                                        };
+                                        
+                                        return (
+                                          <React.Fragment key={task.id}>
+                                            <div
+                                              onClick={() => handleEditTask(task)}
+                                              className={`absolute left-1 right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
+                                                isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
+                                              }`}
+                                              style={{
+                                                top: `${part1Top}px`,
+                                                height: `${Math.max(part1Height, 24)}px`,
+                                                backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
+                                                borderLeftColor: task.color,
+                                                borderLeftWidth: '3px'
+                                              }}
+                                            >
+                                              <div className="p-1.5 h-full flex flex-col">
+                                                <div className="flex items-start gap-1 min-h-0">
+                                                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: task.color }}></div>
+                                                  <div className="flex-1 min-w-0">
+                                                    <h4 className="text-xs font-bold truncate leading-tight text-white">
+                                                      {task.title}
+                                                    </h4>
+                                                    {part1Height > 40 && (
+                                                      <div className="text-xs text-white font-medium mt-0.5">
+                                                        {formatTime12(taskTime.start)}
+                                                      </div>
+                                                    )}
+                                                    {isCurrent && part1Height > 60 && (
+                                                      <div className="mt-1">
+                                                        <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: task.color, color: 'white' }}>
+                                                          NOW
+                                                        </span>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                            
+                                            {dayIndex < 6 && (
+                                              <div
+                                                onClick={() => handleEditTask(task)}
+                                                className={`absolute left-1 right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
+                                                  isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
+                                                }`}
+                                                style={{
+                                                  top: `${part2Top}px`,
+                                                  height: `${Math.max(part2Height, 24)}px`,
+                                                  backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
+                                                  borderLeftColor: task.color,
+                                                  borderLeftWidth: '3px',
+                                                  left: 'calc(100% + 1px)',
+                                                  right: 'calc(-100% + 1px)',
+                                                  width: 'calc(100% - 8px)'
+                                                }}
+                                              >
+                                                <div className="p-1.5 h-full flex flex-col">
+                                                  <div className="flex items-start gap-1 min-h-0">
+                                                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: task.color }}></div>
+                                                    <div className="flex-1 min-w-0">
+                                                      <h4 className="text-xs font-bold truncate leading-tight text-white">
+                                                        {task.title}
+                                                      </h4>
+                                                      {part2Height > 40 && (
+                                                        <div className="text-xs text-white font-medium mt-0.5">
+                                                          Until {formatTime12(taskTime.end)}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </React.Fragment>
+                                        );
+                                      } else {
+                                        const durationMinutes = endMinutes - startMinutes;
+                                        const topPosition = startMinutes * pixelsPerMinute;
+                                        const height = durationMinutes * pixelsPerMinute;
+                                        
+                                        const formatTime12 = (time24) => {
+                                          if (!time24) return '';
+                                          const [hours, minutes] = time24.split(':').map(Number);
+                                          const period = hours >= 12 ? 'PM' : 'AM';
+                                          const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                                          return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
+                                        };
+                                        
+                                        return (
+                                          <div
+                                            key={task.id}
+                                            onClick={() => handleEditTask(task)}
+                                            className={`absolute left-1 right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
+                                              isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
+                                            }`}
+                                            style={{
+                                              top: `${topPosition}px`,
+                                              height: `${Math.max(height, 24)}px`,
+                                              backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
+                                              borderLeftColor: task.color,
+                                              borderLeftWidth: '3px'
+                                            }}
+                                          >
+                                            <div className="p-1.5 h-full flex flex-col">
+                                              <div className="flex items-start gap-1 min-h-0">
+                                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: task.color }}></div>
+                                                <div className="flex-1 min-w-0">
+                                                  <h4 className="text-xs font-bold truncate leading-tight text-white">
+                                                    {task.title}
+                                                  </h4>
+                                                  {height > 40 && (
+                                                    <div className="text-xs text-white font-medium mt-0.5">
+                                                      {formatTime12(taskTime.start)}
+                                                    </div>
+                                                  )}
+                                                  {isCurrent && height > 60 && (
+                                                    <div className="mt-1">
+                                                      <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: task.color, color: 'white' }}>
+                                                        NOW
+                                                      </span>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                    })}
+                                  </div>
+
+
+                                  {/* Current time indicator */}
+                                  {isToday && (() => {
+                                    const now = new Date();
+                                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                                    const pixelsPerMinute = 64 / 60;
+                                    const currentPosition = currentMinutes * pixelsPerMinute;
+                                    
+                                    return (
+                                      <div 
+                                        className="absolute left-0 right-0 z-20 pointer-events-none"
+                                        style={{ top: `${48 + currentPosition}px` }}
+                                      >
+                                        <div className="relative">
+                                          <div className="absolute left-0 w-2 h-2 rounded-full bg-red-500 -translate-y-1"></div>
+                                          <div className="h-0.5 bg-red-500"></div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modals */}
+              {showPrayerSettings && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold text-gray-100">Prayer Adjustments</h2>
+                      <button onClick={() => setShowPrayerSettings(false)} className="text-gray-400 hover:text-gray-200"><X /></button>
+                    </div>
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-400">Adjust prayer times to match your local mosque.</p>
+                      {PRAYER_NAMES.map(prayer => (
+                        <div key={prayer}>
+                          <label className="block text-sm font-medium text-gray-200 mb-2">{prayer}</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={prayerAdjustments[prayer]}
+                              onChange={(e) => setPrayerAdjustments({ ...prayerAdjustments, [prayer]: parseInt(e.target.value) || 0 })}
+                              className="flex-1 p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                              placeholder="0"
+                            />
+                            <span className="text-sm text-gray-400">min</span>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={handleSavePrayerAdjustments} className="w-full bg-teal-600 text-white py-3 rounded-lg font-semibold hover:bg-teal-700 transition mt-4">Save</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showAddTask && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold text-gray-100">Add New Task</h2>
+                      <button onClick={() => setShowAddTask(false)} className="text-gray-400 hover:text-gray-200"><X /></button>
+                    </div>
+                    <TaskForm task={newTask} setTask={setNewTask} onSubmit={handleAddTask} submitLabel="Add Task" />
+                  </div>
+                </div>
+              )}
+
+              {showEditTask && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold text-gray-100">Edit Task</h2>
+                      <button onClick={() => { setShowEditTask(false); setEditingTask(null); }} className="text-gray-400 hover:text-gray-200"><X /></button>
+                    </div>
+                    <TaskForm task={newTask} setTask={setNewTask} onSubmit={handleUpdateTask} submitLabel="Update Task" />
+                  </div>
+                </div>
+              )}
+
+              {/* ADD ADMIN PANEL HERE */}
+              {showAdminPanel && isAdmin && (
+  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-gray-100">Admin Panel - User Management</h2>
+        <button onClick={() => setShowAdminPanel(false)} className="text-gray-400 hover:text-gray-200">
+          <X />
+        </button>
+      </div>
+      
+      {/* Add User Form */}
+      <div className="bg-gray-700/50 rounded-lg p-4 mb-6 border border-gray-600">
+        <h3 className="text-lg font-semibold text-gray-100 mb-4">Create New User</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="Username"
+            value={registerForm.username}
+            onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
+            className="p-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={registerForm.password}
+            onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+            className="p-2 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <div className="flex gap-2">
+            <label className="flex items-center gap-2 text-gray-300 text-sm">
+              <input
+                type="checkbox"
+                checked={registerForm.isAdmin || false}
+                onChange={(e) => setRegisterForm({ ...registerForm, isAdmin: e.target.checked })}
+                className="w-4 h-4 text-teal-600 bg-gray-700 border-gray-600 rounded focus:ring-2 focus:ring-teal-500"
+              />
+              Admin
+            </label>
+            <button
+              onClick={async () => {
+                if (!registerForm.username || !registerForm.password) {
+                  alert('Please fill in username and password');
+                  return;
+                }
+
+                try {
+                  const { data: existingUser } = await supabaseClient
+                    .from('users')
+                    .select('username')
+                    .eq('username', registerForm.username)
+                    .single();
+
+                  if (existingUser) {
+                    alert('Username already exists');
+                    return;
+                  }
+
+                  const { data, error } = await supabaseClient
+                    .from('users')
+                    .insert([{
+                      username: registerForm.username,
+                      password: registerForm.password,
+                      is_admin: registerForm.isAdmin || false,
+                      created_at: new Date().toISOString()
+                    }])
+                    .select();
+
+                  if (error) {
+                    alert('Failed to create user: ' + error.message);
+                    return;
+                  }
+
+                  alert('User created successfully!');
+                  setRegisterForm({ username: '', password: '', confirmPassword: '', isAdmin: false });
+                  loadAllUsers();
+                } catch (error) {
+                  console.error('Error creating user:', error);
+                  alert('Failed to create user');
+                }
+              }}
+              className="flex-1 bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition font-semibold"
+            >
+              Create User
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Users Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-700">
+              <th className="text-left p-3 text-gray-300 font-semibold">Username</th>
+              <th className="text-left p-3 text-gray-300 font-semibold">Role</th>
+              <th className="text-left p-3 text-gray-300 font-semibold">Created</th>
+              <th className="text-right p-3 text-gray-300 font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allUsers.map(user => (
+              <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/30">
+                <td className="p-3 text-gray-200">{user.username}</td>
+                <td className="p-3">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.is_admin ? 'bg-purple-900/50 text-purple-300' : 'bg-gray-600 text-gray-300'}`}>
+                    {user.is_admin ? 'Admin' : 'User'}
+                  </span>
+                </td>
+                <td className="p-3 text-gray-400 text-sm">
+                  {new Date(user.created_at).toLocaleDateString()}
+                </td>
+                <td className="p-3">
+                  <div className="flex justify-end gap-2">
+                    {user.id !== currentUser.id && (
+                      <>
+                        <button
+                          onClick={() => handleToggleAdmin(user.id, user.is_admin)}
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                        >
+                          {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {user.id === currentUser.id && (
+                      <span className="text-gray-500 text-sm italic">Current user</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
+            </div>
+          );
+        }
+
+        ReactDOM.render(<PrayerScheduler />, document.getElementById('root'));
+    </script>
+</body>
+</html>
