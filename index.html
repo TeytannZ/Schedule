@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prayer Scheduler</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕌</text></svg>">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -858,7 +858,6 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
       setTasks([...tasks, taskToAdd]);
       setNewTask({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1 });
       setShowAddTask(false);
-      alert('Task saved successfully!');
     }
   } catch (error) {
     console.error('Unexpected error:', error);
@@ -1473,7 +1472,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
                           </div>
                           
                           {/* Days columns */}
-                          <div className="flex-1 grid grid-cols-7">
+                          <div className="flex-1 grid grid-cols-7" style={{ minWidth: '700px' }}>
                             {getWeekDates().map((date, dayIndex) => {
                               let dayTasks = getTasksForDate(date);
 
@@ -1558,7 +1557,7 @@ if (task._isContinuation) {
     <div
       key={task.id}
       onClick={() => handleEditTask(task)}
-      className={`absolute left-1 right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
+      className={`absolute left-0.5 sm:left-1 right-0.5 sm:right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
         isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
       }`}
       style={{
@@ -1569,15 +1568,15 @@ if (task._isContinuation) {
         borderLeftWidth: '3px'
       }}
     >
-      <div className="p-1.5 h-full flex flex-col">
-        <div className="flex items-start gap-1 min-h-0">
-          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: task.color }}></div>
+      <div className="p-1 h-full flex flex-col justify-center">
+        <div className="flex items-center gap-1">
+          <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold truncate leading-tight text-white">
+            <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${part2Height < 30 ? 9 : part2Height < 50 ? 10 : part2Height < 80 ? 11 : 12}px` }}>
               {task.title}
             </h4>
-            {part2Height > 40 && (
-              <div className="text-xs text-white font-medium mt-0.5">
+            {part2Height >= 24 && (
+              <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${part2Height < 30 ? 8 : part2Height < 50 ? 9 : part2Height < 80 ? 10 : 11}px` }}>
                 Until {formatTime12(taskTime.end)}
               </div>
             )}
@@ -1599,59 +1598,57 @@ const [endH, endM] = taskTime.end.split(':').map(Number);
                                       const crossesMidnight = endMinutes <= startMinutes;
                                       
                                       if (crossesMidnight) {
-  // Only render the first part (from start time to midnight)
-  const part1Duration = 1440 - startMinutes;
-  const part1Top = startMinutes * pixelsPerMinute;
-  const part1Height = part1Duration * pixelsPerMinute;
-  
-  const formatTime12 = (time24) => {
-    if (!time24) return '';
-    const [hours, minutes] = time24.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-    return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
-  };
-  
-  return (
-    <div
-      key={task.id}
-      onClick={() => handleEditTask(task)}
-      className={`absolute left-1 right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
-        isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
-      }`}
-      style={{
-        top: `${part1Top}px`,
-        height: `${Math.max(part1Height, 24)}px`,
-        backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
-        borderLeftColor: task.color,
-        borderLeftWidth: '3px'
-      }}
-    >
-      <div className="p-1.5 h-full flex flex-col">
-        <div className="flex items-start gap-1 min-h-0">
-          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ backgroundColor: task.color }}></div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold truncate leading-tight text-white">
-              {task.title}
-            </h4>
-            {part1Height > 40 && (
-              <div className="text-xs text-white font-medium mt-0.5">
-                {formatTime12(taskTime.start)}
-              </div>
-            )}
-            {isCurrent && part1Height > 60 && (
-              <div className="mt-1">
-                <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: task.color, color: 'white' }}>
-                  NOW
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-} else {
+                                        // Only render the first part (from start time to midnight)
+                                        const part1Duration = 1440 - startMinutes;
+                                        const part1Top = startMinutes * pixelsPerMinute;
+                                        const part1Height = part1Duration * pixelsPerMinute;
+                                        
+                                        const formatTime12 = (time24) => {
+                                          if (!time24) return '';
+                                          const [hours, minutes] = time24.split(':').map(Number);
+                                          const period = hours >= 12 ? 'PM' : 'AM';
+                                          const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                                          return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
+                                        };
+                                        
+                                        return (
+                                          <div
+                                            key={task.id}
+                                            onClick={() => handleEditTask(task)}
+                                            className={`absolute left-0.5 sm:left-1 right-0.5 sm:right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
+                                              isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
+                                            }`}
+                                            style={{
+                                              top: `${part1Top}px`,
+                                              height: `${Math.max(part1Height, 24)}px`,
+                                              backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
+                                              borderLeftColor: task.color,
+                                              borderLeftWidth: '3px'
+                                            }}
+                                          >
+                                            <div className="p-1 h-full flex flex-col justify-center">
+                                              <div className="flex items-center gap-1">
+                                                <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
+                                                <div className="flex-1 min-w-0">
+                                                  <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${part1Height < 30 ? 9 : part1Height < 50 ? 10 : part1Height < 80 ? 11 : 12}px` }}>
+                                                    {task.title}
+                                                  </h4>
+                                                  {part1Height >= 24 && (
+                                                    <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${part1Height < 30 ? 8 : part1Height < 50 ? 9 : part1Height < 80 ? 10 : 11}px` }}>
+                                                      {formatTime12(taskTime.start)}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              {isCurrent && part1Height > 35 && (
+                                                <span className="px-1 py-0.5 rounded-full font-semibold mt-1 inline-block text-white" style={{ fontSize: `${part1Height < 40 ? 7 : part1Height < 60 ? 8 : 9}px`, backgroundColor: task.color }}>
+                                                  NOW
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      } else {
                                         const durationMinutes = endMinutes - startMinutes;
                                         const topPosition = startMinutes * pixelsPerMinute;
                                         const height = durationMinutes * pixelsPerMinute;
@@ -1668,7 +1665,7 @@ const [endH, endM] = taskTime.end.split(':').map(Number);
                                           <div
                                             key={task.id}
                                             onClick={() => handleEditTask(task)}
-                                            className={`absolute left-1 right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
+                                            className={`absolute left-0.5 sm:left-1 right-0.5 sm:right-1 rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
                                               isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
                                             }`}
                                             style={{
@@ -1680,23 +1677,25 @@ const [endH, endM] = taskTime.end.split(':').map(Number);
                                             }}
                                           >
                                             <div className="p-1 h-full flex flex-col justify-center">
-  <div className="flex items-center gap-1">
-    <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
-    <div className="flex-1 min-w-0">
-      <h4 className="text-[10px] font-bold truncate leading-none text-white">
-        {task.title}
-      </h4>
-      <div className="text-[9px] text-white/80 font-medium leading-none mt-0.5">
-        {formatTime12(taskTime.start)}
-      </div>
-    </div>
-  </div>
-  {isCurrent && height > 40 && (
-    <span className="text-[8px] px-1 py-0.5 rounded-full font-semibold mt-1 inline-block" style={{ backgroundColor: task.color, color: 'white' }}>
-      NOW
-    </span>
-  )}
-</div>
+                                              <div className="flex items-center gap-1">
+                                                <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
+                                                <div className="flex-1 min-w-0">
+                                                  <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${height < 30 ? 9 : height < 50 ? 10 : height < 80 ? 11 : 12}px` }}>
+                                                    {task.title}
+                                                  </h4>
+                                                  {height >= 24 && (
+                                                    <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${height < 30 ? 8 : height < 50 ? 9 : height < 80 ? 10 : 11}px` }}>
+                                                      {formatTime12(taskTime.start)}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              {isCurrent && height > 35 && (
+                                                <span className="px-1 py-0.5 rounded-full font-semibold mt-1 inline-block text-white" style={{ fontSize: `${height < 40 ? 7 : height < 60 ? 8 : 9}px`, backgroundColor: task.color }}>
+                                                  NOW
+                                                </span>
+                                              )}
+                                            </div>
                                           </div>
                                         );
                                       }
@@ -1782,7 +1781,23 @@ const [endH, endM] = taskTime.end.split(':').map(Number);
                   <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-bold text-gray-100">Edit Task</h2>
-                      <button onClick={() => { setShowEditTask(false); setEditingTask(null); }} className="text-gray-400 hover:text-gray-200"><X /></button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this task?')) {
+                              handleDeleteTask(editingTask.id);
+                              setShowEditTask(false);
+                              setEditingTask(null);
+                            }
+                          }}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition"
+                        >
+                          <Trash />
+                        </button>
+                        <button onClick={() => { setShowEditTask(false); setEditingTask(null); }} className="text-gray-400 hover:text-gray-200">
+                          <X />
+                        </button>
+                      </div>
                     </div>
                     <TaskForm task={newTask} setTask={setNewTask} onSubmit={handleUpdateTask} submitLabel="Update Task" />
                   </div>
