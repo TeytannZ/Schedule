@@ -1783,17 +1783,8 @@ dayTasks = dayTasks.sort((a, b) => {
 
 {/* Current time indicator */}
 {isToday && (() => {
-  const [currentTime, setCurrentTime] = React.useState(new Date());
-  
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-    
-    return () => clearInterval(timer);
-  }, []);
-  
-  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const pixelsPerMinute = 64 / 60;
   const currentPosition = currentMinutes * pixelsPerMinute;
   
