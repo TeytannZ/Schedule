@@ -72,7 +72,7 @@
         };
 
         const PRAYER_NAMES = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-        const COLORS = ['#EF4444', '#F97316', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899', '#F43F5E', '#E11D48', '#FB923C', '#FBBF24', '#A3E635', '#4ADE80', '#2DD4BF', '#22D3EE', '#60A5FA', '#818CF8', '#A78BFA', '#C084FC', '#E879F9', '#F472B6', '#2a3445'];
+        const COLORS = ['#EF4444', '#F97316', '#F59E0B', '#10B981', '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899', '#F43F5E', '#E11D48', '#FB923C', '#FBBF24', '#A3E635', '#4ADE80', '#2DD4BF', '#22D3EE', '#60A5FA', '#818CF8', '#A78BFA', '#C084FC', '#E879F9', '#F472B6', '#253041'];
         function TaskForm({ task, setTask, onSubmit, submitLabel }) {
           return (
             <div className="space-y-4">
@@ -243,21 +243,28 @@
   ) : (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-200 mb-2">Repeat Interval</label>
-        <select 
-          value={task.repeatInterval || 1} 
-          onChange={(e) => setTask({ ...task, repeatInterval: parseInt(e.target.value) })}
-          className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-        >
-          <option value={1}>Every week</option>
-          <option value={2}>Every 2 weeks</option>
-          <option value={3}>Every 3 weeks</option>
-          <option value={4}>Every 4 weeks (monthly)</option>
-          <option value={6}>Every 6 weeks</option>
-          <option value={8}>Every 8 weeks</option>
-          <option value={12}>Every 12 weeks (quarterly)</option>
-        </select>
-      </div>
+  <label className="block text-sm font-medium text-gray-200 mb-2">Repeat Interval (weeks)</label>
+  <input 
+    type="number" 
+    min="1"
+    max="52"
+    value={task.repeatInterval || 1} 
+    onChange={(e) => setTask({ ...task, repeatInterval: parseInt(e.target.value) || 1 })}
+    className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+    placeholder="e.g., 1 for weekly, 2 for bi-weekly"
+  />
+  <p className="text-xs text-gray-400 mt-1">Enter number of weeks between repetitions (1 = every week, 2 = every 2 weeks, etc.)</p>
+</div>
+<div>
+  <label className="block text-sm font-medium text-gray-200 mb-2">Start Week (Optional)</label>
+  <input 
+    type="date" 
+    value={task.startWeek || ''} 
+    onChange={(e) => setTask({ ...task, startWeek: e.target.value })}
+    className="w-full p-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+  />
+  <p className="text-xs text-gray-400 mt-1">Choose which week this task should start (leave empty to start from current week)</p>
+</div>
       <div>
         <label className="block text-sm font-medium text-gray-200 mb-2">Repeat on Days</label>
         <div className="grid grid-cols-7 gap-2">
@@ -339,7 +346,7 @@
           const [loginForm, setLoginForm] = useState({ username: '', password: '' });
           const [registerForm, setRegisterForm] = useState({ username: '', password: '', confirmPassword: '', isAdmin: false });
           const [allUsers, setAllUsers] = useState([]);
-          const [newTask, setNewTask] = useState({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1, alternativeTasks: [] });
+          const [newTask, setNewTask] = useState({ title: '', type: 'stable', startTime: '', endTime: '', prayerReference: 'Fajr', offsetMinutes: 0, duration: 60, endType: 'duration', endPrayer: 'Sunrise', endOffsetMinutes: 0, fixedEndTime: '', color: COLORS[0], days: [true, true, true, true, true, true, true], hasMovingEnd: false, isOneTime: false, oneTimeDate: '', repeatInterval: 1, startWeek: '', alternativeTasks: [] });
           const [editMode, setEditMode] = useState(true);
           const [showAlternatives, setShowAlternatives] = useState(false);
           const [selectedTaskForAlternatives, setSelectedTaskForAlternatives] = useState(null);
@@ -426,6 +433,7 @@
           isOneTime: task.is_one_time || false,
           oneTimeDate: task.one_time_date || '',
           repeatInterval: task.repeat_interval || 1,
+          startWeek: task.start_week || '',
           alternativeTasks: task.alternative_tasks || []
         };
       });
@@ -636,6 +644,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
                 is_one_time: task.isOneTime || false,
                 one_time_date: task.oneTimeDate || null,
                 repeat_interval: task.repeatInterval || 1,
+                start_week: task.startWeek || null,
                 alternative_tasks: task.alternativeTasks || [],
                 updated_at: new Date().toISOString()
               };
@@ -790,7 +799,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
   }
 };
 
-          const getTasksForDate = (date) => {
+const getTasksForDate = (date) => {
   return tasks.filter(task => {
     if (task.isOneTime) {
       if (!task.oneTimeDate) return false;
@@ -803,11 +812,23 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
       const interval = task.repeatInterval || 1;
       if (interval === 1) return true;
       
-      const baseDate = new Date('2025-01-06'); // A known Monday
+      // Determine the start week for comparison
+      let baseDate;
+      if (task.startWeek) {
+        baseDate = new Date(task.startWeek + 'T00:00:00');
+        // Adjust to the beginning of the week (Monday)
+        const dayOfWeek = baseDate.getDay();
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        baseDate.setDate(baseDate.getDate() - diff);
+      } else {
+        baseDate = new Date('2025-01-06'); // Default Monday
+      }
+      
       const diffTime = date.getTime() - baseDate.getTime();
       const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
       
-      return diffWeeks % interval === 0;
+      // Task should appear if it's on the right week interval and not before start week
+      return diffWeeks >= 0 && diffWeeks % interval === 0;
     }
   });
 };
@@ -863,6 +884,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
       color: newTask.color || COLORS[0],
       days: newTask.days || [true, true, true, true, true, true, true],
       repeat_interval: newTask.repeatInterval || 1,
+      start_week: newTask.startWeek || null,
       alternative_tasks: newTask.alternativeTasks || []
     };
 
@@ -960,6 +982,7 @@ const handleToggleAdmin = async (userId, currentIsAdmin) => {
       color: newTask.color || COLORS[0],
       days: newTask.days || [true, true, true, true, true, true, true],
       repeat_interval: newTask.repeatInterval || 1,
+      start_week: newTask.startWeek || null,
       alternative_tasks: newTask.alternativeTasks || []
     };
 
@@ -1757,6 +1780,35 @@ dayTasks = dayTasks.sort((a, b) => {
     });
   })()}
 </div>
+
+{/* Current time indicator */}
+{isToday && (() => {
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+  
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const pixelsPerMinute = 64 / 60;
+  const currentPosition = currentMinutes * pixelsPerMinute;
+  
+  return (
+    <div 
+      className="absolute left-0 right-0 z-20 pointer-events-none"
+      style={{ top: `${48 + currentPosition}px` }}
+    >
+      <div className="relative">
+        <div className="absolute left-0 w-2 h-2 rounded-full bg-red-500 -translate-y-1"></div>
+        <div className="h-0.5 bg-red-500"></div>
+      </div>
+    </div>
+  );
+})()}
                                 </div>
                               );
                             })}
@@ -1767,6 +1819,8 @@ dayTasks = dayTasks.sort((a, b) => {
                   </div>
                 </div>
               </div>
+
+
 
               {/* Modals */}
               {showPrayerSettings && (
@@ -2029,4 +2083,3 @@ dayTasks = dayTasks.sort((a, b) => {
     </script>
 </body>
 </html>
-
