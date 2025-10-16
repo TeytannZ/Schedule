@@ -1637,168 +1637,106 @@ dayTasks = dayTasks.sort((a, b) => {
                                   {/* Tasks overlay */}
 <div className="absolute top-12 left-0 right-0 bottom-0">
   {(() => {
-    // Smart overlap detection
-const taskGroups = [];
-const sortedTasks = [...dayTasks].sort((a, b) => {
-  const aTime = calculateTaskTime(a);
-  const bTime = calculateTaskTime(b);
-  if (!aTime || !bTime) return 0;
-  return aTime.start.localeCompare(bTime.start);
-});
+  // Smart overlap detection
+  const sortedTasks = [...dayTasks].sort((a, b) => {
+    const aTime = calculateTaskTime(a);
+    const bTime = calculateTaskTime(b);
+    if (!aTime || !bTime) return 0;
+    return aTime.start.localeCompare(bTime.start);
+  });
 
-sortedTasks.forEach(task => {
-  const taskTime = calculateTaskTime(task);
-  if (!taskTime) return;
+  // Each task gets its own layer by default (full width, stacked)
+  return sortedTasks.map((task, taskIndex) => {
+    const taskTime = calculateTaskTime(task);
+    const isCurrent = taskTime ? isTaskCurrent(task, date) : false;
+    const isPast = taskTime ? isTaskPast(task, date) : false;
+    
+    if (!taskTime) return null;
 
-  const [startH, startM] = taskTime.start.split(':').map(Number);
-  const [endH, endM] = taskTime.end.split(':').map(Number);
-  let startMinutes = startH * 60 + startM;
-  let endMinutes = endH * 60 + endM;
-  if (task._isContinuation) {
-    startMinutes = 0;
-    endMinutes = task._continuationEndMinutes;
-  }
-  if (endMinutes <= startMinutes && !task._isContinuation) {
-    endMinutes += 1440;
-  }
+    const [startH, startM] = taskTime.start.split(':').map(Number);
+    const [endH, endM] = taskTime.end.split(':').map(Number);
+    
+    let startMinutes = startH * 60 + startM;
+    let endMinutes = endH * 60 + endM;
+    const pixelsPerMinute = 64 / 60;
 
-  // Check if this task should overlap or be in its own group
-  let addedToGroup = false;
-  for (let group of taskGroups) {
-    const hasSignificantOverlap = group.some(t => {
-      const tTime = calculateTaskTime(t);
-      if (!tTime) return false;
-      const [tStartH, tStartM] = tTime.start.split(':').map(Number);
-      const [tEndH, tEndM] = tTime.end.split(':').map(Number);
-      let tStart = tStartH * 60 + tStartM;
-      let tEnd = tEndH * 60 + tEndM;
-      if (t._isContinuation) {
-        tStart = 0;
-        tEnd = t._continuationEndMinutes;
-      }
-      if (tEnd <= tStart && !t._isContinuation) tEnd += 1440;
+    let topPosition, height;
 
-      // Calculate if there's enough space before overlap for title (minimum 30 minutes)
-      const overlapStart = Math.max(startMinutes, tStart);
-      const overlapEnd = Math.min(endMinutes, tEnd);
-      const hasOverlap = overlapStart < overlapEnd;
+    if (task._isContinuation) {
+      const part2Duration = task._continuationEndMinutes;
+      topPosition = 0;
+      height = part2Duration * pixelsPerMinute;
+    } else {
+      const crossesMidnight = endMinutes <= startMinutes;
       
-      if (hasOverlap) {
-        const spaceBeforeOverlap = overlapStart - startMinutes;
-        // If there's less than 30 minutes before overlap, they should share space
-        return spaceBeforeOverlap < 30;
+      if (crossesMidnight) {
+        const part1Duration = 1440 - startMinutes;
+        topPosition = startMinutes * pixelsPerMinute;
+        height = part1Duration * pixelsPerMinute;
+      } else {
+        const durationMinutes = endMinutes - startMinutes;
+        topPosition = startMinutes * pixelsPerMinute;
+        height = durationMinutes * pixelsPerMinute;
       }
-      return false;
-    });
-
-    if (hasSignificantOverlap) {
-      group.push(task);
-      addedToGroup = true;
-      break;
     }
-  }
 
-  if (!addedToGroup) {
-    taskGroups.push([task]);
-  }
-});
+    const formatTime12 = (time24) => {
+      if (!time24) return '';
+      const [hours, minutes] = time24.split(':').map(Number);
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
+    };
 
-return taskGroups.flatMap((group, groupIndex) => {
-      const groupWidth = group.length;
-      return group.map((task, indexInGroup) => {
-        const taskTime = calculateTaskTime(task);
-        const isCurrent = taskTime ? isTaskCurrent(task, date) : false;
-        const isPast = taskTime ? isTaskPast(task, date) : false;
-        
-        if (!taskTime) return null;
-
-        const [startH, startM] = taskTime.start.split(':').map(Number);
-        const [endH, endM] = taskTime.end.split(':').map(Number);
-        
-        let startMinutes = startH * 60 + startM;
-        let endMinutes = endH * 60 + endM;
-        const pixelsPerMinute = 64 / 60;
-
-        let topPosition, height;
-
-        if (task._isContinuation) {
-          const part2Duration = task._continuationEndMinutes;
-          topPosition = 0;
-          height = part2Duration * pixelsPerMinute;
-        } else {
-          const crossesMidnight = endMinutes <= startMinutes;
-          
-          if (crossesMidnight) {
-            const part1Duration = 1440 - startMinutes;
-            topPosition = startMinutes * pixelsPerMinute;
-            height = part1Duration * pixelsPerMinute;
-          } else {
-            const durationMinutes = endMinutes - startMinutes;
-            topPosition = startMinutes * pixelsPerMinute;
-            height = durationMinutes * pixelsPerMinute;
+    return (
+      <div
+        key={task.id + '-' + taskIndex}
+        onClick={() => {
+          if (editMode) {
+            handleEditTask(task);
+          } else if (task.alternativeTasks && task.alternativeTasks.length > 0) {
+            setSelectedTaskForAlternatives(task);
+            setShowAlternatives(true);
           }
-        }
-
-        const leftPercent = (indexInGroup / groupWidth) * 100;
-        const widthPercent = (1 / groupWidth) * 100;
-
-        const formatTime12 = (time24) => {
-          if (!time24) return '';
-          const [hours, minutes] = time24.split(':').map(Number);
-          const period = hours >= 12 ? 'PM' : 'AM';
-          const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-          return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
-        };
-
-        return (
-          <div
-            key={task.id + '-' + groupIndex + '-' + indexInGroup}
-            onClick={() => {
-              if (editMode) {
-                handleEditTask(task);
-              } else if (task.alternativeTasks && task.alternativeTasks.length > 0) {
-                setSelectedTaskForAlternatives(task);
-                setShowAlternatives(true);
-              }
-            }}
-            className={`absolute rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-10 overflow-hidden ${
-              isCurrent ? 'ring-2 ring-teal-400 z-10' : isPast ? 'opacity-60' : ''
-            }`}
-            style={{
-              top: `${topPosition}px`,
-              height: `${Math.max(height, 24)}px`,
-              left: `calc(${leftPercent}% + 2px)`,
-              width: `calc(${widthPercent}% - 4px)`,
-              backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
-              borderLeftColor: task.color,
-              borderLeftWidth: '3px'
-            }}
-          >
-            <div className="p-1 h-full flex flex-col justify-center">
-              <div className="flex items-center gap-1">
-                <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${height < 30 ? 9 : height < 50 ? 10 : height < 80 ? 11 : 12}px` }}>
-                    {task.title}
-                  </h4>
-                  {height >= 24 && (
-                    <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${height < 30 ? 8 : height < 50 ? 9 : height < 80 ? 10 : 11}px` }}>
-                      {task._isContinuation ? `Until ${formatTime12(taskTime.end)}` : formatTime12(taskTime.start)}
-                    </div>
-                  )}
+        }}
+        className={`absolute rounded-lg border-l-4 border border-gray-600 shadow-sm cursor-pointer transition hover:shadow-lg hover:z-50 overflow-hidden ${
+          isCurrent ? 'ring-2 ring-teal-400' : isPast ? 'opacity-60' : ''
+        }`}
+        style={{
+          top: `${topPosition}px`,
+          height: `${Math.max(height, 24)}px`,
+          left: '2px',
+          right: '2px',
+          backgroundColor: isPast ? task.color + '30' : isCurrent ? task.color + '50' : task.color + '40',
+          borderLeftColor: task.color,
+          borderLeftWidth: '3px',
+          zIndex: taskIndex + 1
+        }}
+      >
+        <div className="p-1 h-full flex flex-col justify-center">
+          <div className="flex items-center gap-1">
+            <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${height < 30 ? 9 : height < 50 ? 10 : height < 80 ? 11 : 12}px` }}>
+                {task.title}
+              </h4>
+              {height >= 24 && (
+                <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${height < 30 ? 8 : height < 50 ? 9 : height < 80 ? 10 : 11}px` }}>
+                  {task._isContinuation ? `Until ${formatTime12(taskTime.end)}` : formatTime12(taskTime.start)}
                 </div>
-              </div>
-              {isCurrent && height > 35 && (
-                <span className="px-1 py-0.5 rounded-full font-semibold mt-1 inline-block text-white" style={{ fontSize: `${height < 40 ? 7 : height < 60 ? 8 : 9}px`, backgroundColor: task.color }}>
-                  NOW
-                </span>
               )}
             </div>
           </div>
-        );
-      });
-    });
-  })()}
+          {isCurrent && height > 35 && (
+            <span className="px-1 py-0.5 rounded-full font-semibold mt-1 inline-block text-white" style={{ fontSize: `${height < 40 ? 7 : height < 60 ? 8 : 9}px`, backgroundColor: task.color }}>
+              NOW
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  });
+})()}
 </div>
 
 {/* Current time indicator */}
@@ -2093,5 +2031,6 @@ return taskGroups.flatMap((group, groupIndex) => {
     </script>
 </body>
 </html>
+
 
 
