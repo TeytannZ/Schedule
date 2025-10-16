@@ -350,10 +350,19 @@
           const [editMode, setEditMode] = useState(true);
           const [showAlternatives, setShowAlternatives] = useState(false);
           const [selectedTaskForAlternatives, setSelectedTaskForAlternatives] = useState(null);
+          const [currentTime, setCurrentTime] = useState(new Date());
 
           useEffect(() => {
             loadSettings();
           }, []);
+
+          useEffect(() => {
+              const timer = setInterval(() => {
+                setCurrentTime(new Date());
+              }, 60000); // Update every minute
+              
+              return () => clearInterval(timer);
+            }, []);
 
           useEffect(() => {
             if (selectedCity && selectedNeighborhood) fetchPrayerTimes();
@@ -1794,16 +1803,6 @@ return taskGroups.flatMap((group, groupIndex) => {
 
 {/* Current time indicator */}
 {isToday && (() => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // Update every minute
-    
-    return () => clearInterval(timer);
-  }, []);
-  
   const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
   const pixelsPerMinute = 64 / 60;
   const currentPosition = currentMinutes * pixelsPerMinute;
@@ -2094,4 +2093,5 @@ return taskGroups.flatMap((group, groupIndex) => {
     </script>
 </body>
 </html>
+
 
