@@ -1628,62 +1628,73 @@ dayTasks = dayTasks.sort((a, b) => {
                                   {/* Tasks overlay */}
 <div className="absolute top-12 left-0 right-0 bottom-0">
   {(() => {
-    // Group overlapping tasks
-    const taskGroups = [];
-    const sortedTasks = [...dayTasks].sort((a, b) => {
-      const aTime = calculateTaskTime(a);
-      const bTime = calculateTaskTime(b);
-      if (!aTime || !bTime) return 0;
-      return aTime.start.localeCompare(bTime.start);
+    // Smart overlap detection
+const taskGroups = [];
+const sortedTasks = [...dayTasks].sort((a, b) => {
+  const aTime = calculateTaskTime(a);
+  const bTime = calculateTaskTime(b);
+  if (!aTime || !bTime) return 0;
+  return aTime.start.localeCompare(bTime.start);
+});
+
+sortedTasks.forEach(task => {
+  const taskTime = calculateTaskTime(task);
+  if (!taskTime) return;
+
+  const [startH, startM] = taskTime.start.split(':').map(Number);
+  const [endH, endM] = taskTime.end.split(':').map(Number);
+  let startMinutes = startH * 60 + startM;
+  let endMinutes = endH * 60 + endM;
+  if (task._isContinuation) {
+    startMinutes = 0;
+    endMinutes = task._continuationEndMinutes;
+  }
+  if (endMinutes <= startMinutes && !task._isContinuation) {
+    endMinutes += 1440;
+  }
+
+  // Check if this task should overlap or be in its own group
+  let addedToGroup = false;
+  for (let group of taskGroups) {
+    const hasSignificantOverlap = group.some(t => {
+      const tTime = calculateTaskTime(t);
+      if (!tTime) return false;
+      const [tStartH, tStartM] = tTime.start.split(':').map(Number);
+      const [tEndH, tEndM] = tTime.end.split(':').map(Number);
+      let tStart = tStartH * 60 + tStartM;
+      let tEnd = tEndH * 60 + tEndM;
+      if (t._isContinuation) {
+        tStart = 0;
+        tEnd = t._continuationEndMinutes;
+      }
+      if (tEnd <= tStart && !t._isContinuation) tEnd += 1440;
+
+      // Calculate if there's enough space before overlap for title (minimum 30 minutes)
+      const overlapStart = Math.max(startMinutes, tStart);
+      const overlapEnd = Math.min(endMinutes, tEnd);
+      const hasOverlap = overlapStart < overlapEnd;
+      
+      if (hasOverlap) {
+        const spaceBeforeOverlap = overlapStart - startMinutes;
+        // If there's less than 30 minutes before overlap, they should share space
+        return spaceBeforeOverlap < 30;
+      }
+      return false;
     });
 
-    sortedTasks.forEach(task => {
-      const taskTime = calculateTaskTime(task);
-      if (!taskTime) return;
+    if (hasSignificantOverlap) {
+      group.push(task);
+      addedToGroup = true;
+      break;
+    }
+  }
 
-      const [startH, startM] = taskTime.start.split(':').map(Number);
-      const [endH, endM] = taskTime.end.split(':').map(Number);
-      let startMinutes = startH * 60 + startM;
-      let endMinutes = endH * 60 + endM;
-      if (task._isContinuation) {
-        startMinutes = 0;
-        endMinutes = task._continuationEndMinutes;
-      }
-      if (endMinutes <= startMinutes && !task._isContinuation) {
-        endMinutes += 1440;
-      }
+  if (!addedToGroup) {
+    taskGroups.push([task]);
+  }
+});
 
-      let addedToGroup = false;
-      for (let group of taskGroups) {
-        const hasOverlap = group.some(t => {
-          const tTime = calculateTaskTime(t);
-          if (!tTime) return false;
-          const [tStartH, tStartM] = tTime.start.split(':').map(Number);
-          const [tEndH, tEndM] = tTime.end.split(':').map(Number);
-          let tStart = tStartH * 60 + tStartM;
-          let tEnd = tEndH * 60 + tEndM;
-          if (t._isContinuation) {
-            tStart = 0;
-            tEnd = t._continuationEndMinutes;
-          }
-          if (tEnd <= tStart && !t._isContinuation) tEnd += 1440;
-
-          return (startMinutes < tEnd && endMinutes > tStart);
-        });
-
-        if (hasOverlap) {
-          group.push(task);
-          addedToGroup = true;
-          break;
-        }
-      }
-
-      if (!addedToGroup) {
-        taskGroups.push([task]);
-      }
-    });
-
-    return taskGroups.flatMap((group, groupIndex) => {
+return taskGroups.flatMap((group, groupIndex) => {
       const groupWidth = group.length;
       return group.map((task, indexInGroup) => {
         const taskTime = calculateTaskTime(task);
@@ -1783,8 +1794,17 @@ dayTasks = dayTasks.sort((a, b) => {
 
 {/* Current time indicator */}
 {isToday && (() => {
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
   const pixelsPerMinute = 64 / 60;
   const currentPosition = currentMinutes * pixelsPerMinute;
   
@@ -2074,3 +2094,4 @@ dayTasks = dayTasks.sort((a, b) => {
     </script>
 </body>
 </html>
+
