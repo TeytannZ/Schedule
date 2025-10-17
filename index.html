@@ -1645,7 +1645,78 @@ dayTasks = dayTasks.sort((a, b) => {
     return aTime.start.localeCompare(bTime.start);
   });
 
-  // Each task gets its own layer by default (full width, stacked)
+  // Calculate overlap regions for each task
+  const getVisibleRegions = (currentTask, currentIndex) => {
+    const currentTime = calculateTaskTime(currentTask);
+    if (!currentTime) return [];
+    
+    const [startH, startM] = currentTime.start.split(':').map(Number);
+    const [endH, endM] = currentTime.end.split(':').map(Number);
+    
+    let taskStart = startH * 60 + startM;
+    let taskEnd = endH * 60 + endM;
+    
+    if (currentTask._isContinuation) {
+      taskStart = 0;
+      taskEnd = currentTask._continuationEndMinutes;
+    } else if (taskEnd <= taskStart) {
+      taskEnd = 1440 - taskStart;
+      taskStart = 0;
+      taskEnd = taskEnd;
+    }
+    
+    // Get all tasks that render above this one (higher z-index)
+    const overlappingTasks = sortedTasks.slice(currentIndex + 1);
+    
+    // Start with the full task duration as visible
+    let visibleRegions = [{ start: taskStart, end: taskEnd }];
+    
+    // Subtract overlapping regions
+    overlappingTasks.forEach(otherTask => {
+      const otherTime = calculateTaskTime(otherTask);
+      if (!otherTime) return;
+      
+      const [oStartH, oStartM] = otherTime.start.split(':').map(Number);
+      const [oEndH, oEndM] = otherTime.end.split(':').map(Number);
+      
+      let otherStart = oStartH * 60 + oStartM;
+      let otherEnd = oEndH * 60 + oEndM;
+      
+      if (otherTask._isContinuation) {
+        otherStart = 0;
+        otherEnd = otherTask._continuationEndMinutes;
+      } else if (otherEnd <= otherStart) {
+        const duration = 1440 - otherStart;
+        otherStart = 0;
+        otherEnd = duration;
+      }
+      
+      // Remove overlapping portions
+      const newRegions = [];
+      visibleRegions.forEach(region => {
+        if (otherEnd <= region.start || otherStart >= region.end) {
+          // No overlap
+          newRegions.push(region);
+        } else if (otherStart <= region.start && otherEnd >= region.end) {
+          // Completely covered - don't add
+        } else if (otherStart > region.start && otherEnd < region.end) {
+          // Split into two regions
+          newRegions.push({ start: region.start, end: otherStart });
+          newRegions.push({ start: otherEnd, end: region.end });
+        } else if (otherStart <= region.start) {
+          // Covers start
+          newRegions.push({ start: otherEnd, end: region.end });
+        } else {
+          // Covers end
+          newRegions.push({ start: region.start, end: otherStart });
+        }
+      });
+      visibleRegions = newRegions;
+    });
+    
+    return visibleRegions.filter(r => r.end - r.start >= 15); // Only show in regions at least 15 minutes
+  };
+
   return sortedTasks.map((task, taskIndex) => {
     const taskTime = calculateTaskTime(task);
     const isCurrent = taskTime ? isTaskCurrent(task, date) : false;
@@ -1687,6 +1758,12 @@ dayTasks = dayTasks.sort((a, b) => {
       const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
       return `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
     };
+    
+    // Get visible regions for text placement
+    const visibleRegions = getVisibleRegions(task, taskIndex);
+    const largestRegion = visibleRegions.reduce((max, region) => 
+      (region.end - region.start) > (max.end - max.start) ? region : max
+    , visibleRegions[0] || { start: 0, end: 0 });
 
     return (
       <div
@@ -1713,26 +1790,43 @@ dayTasks = dayTasks.sort((a, b) => {
           zIndex: taskIndex + 1
         }}
       >
-        <div className="p-1 h-full flex flex-col justify-center">
-          <div className="flex items-center gap-1">
-            <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${height < 30 ? 9 : height < 50 ? 10 : height < 80 ? 11 : 12}px` }}>
-                {task.title}
-              </h4>
-              {height >= 24 && (
-                <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${height < 30 ? 8 : height < 50 ? 9 : height < 80 ? 10 : 11}px` }}>
-                  {task._isContinuation ? `Until ${formatTime12(taskTime.end)}` : formatTime12(taskTime.start)}
+        {/* Render text labels in visible regions */}
+        {visibleRegions.map((region, idx) => {
+          const regionHeight = (region.end - region.start) * pixelsPerMinute;
+          const regionTop = (region.start - (task._isContinuation ? 0 : startMinutes)) * pixelsPerMinute;
+          
+          if (regionHeight < 20) return null; // Too small to show text
+          
+          return (
+            <div 
+              key={idx}
+              className="absolute left-0 right-0 p-1 flex flex-col justify-center"
+              style={{
+                top: `${regionTop}px`,
+                height: `${regionHeight}px`
+              }}
+            >
+              <div className="flex items-center gap-1">
+                <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: task.color }}></div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold truncate leading-tight text-white" style={{ fontSize: `${regionHeight < 30 ? 9 : regionHeight < 50 ? 10 : regionHeight < 80 ? 11 : 12}px` }}>
+                    {task.title}
+                  </h4>
+                  {regionHeight >= 24 && (
+                    <div className="text-white/80 font-medium leading-tight mt-0.5" style={{ fontSize: `${regionHeight < 30 ? 8 : regionHeight < 50 ? 9 : regionHeight < 80 ? 10 : 11}px` }}>
+                      {task._isContinuation ? `Until ${formatTime12(taskTime.end)}` : formatTime12(taskTime.start)}
+                    </div>
+                  )}
                 </div>
+              </div>
+              {isCurrent && regionHeight > 35 && idx === 0 && (
+                <span className="px-1 py-0.5 rounded-full font-semibold mt-1 inline-block text-white" style={{ fontSize: `${regionHeight < 40 ? 7 : regionHeight < 60 ? 8 : 9}px`, backgroundColor: task.color }}>
+                  NOW
+                </span>
               )}
             </div>
-          </div>
-          {isCurrent && height > 35 && (
-            <span className="px-1 py-0.5 rounded-full font-semibold mt-1 inline-block text-white" style={{ fontSize: `${height < 40 ? 7 : height < 60 ? 8 : 9}px`, backgroundColor: task.color }}>
-              NOW
-            </span>
-          )}
-        </div>
+          );
+        })}
       </div>
     );
   });
@@ -2031,6 +2125,7 @@ dayTasks = dayTasks.sort((a, b) => {
     </script>
 </body>
 </html>
+
 
 
 
